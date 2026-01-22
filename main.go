@@ -1,0 +1,190 @@
+package main
+
+import (
+	"analog-be/controller"
+	"analog-be/interceptor"
+	"analog-be/pkg"
+	"analog-be/repository"
+	"analog-be/routes"
+	"analog-be/service"
+	"context"
+	"crypto/tls"
+	"database/sql"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/NARUBROWN/spine"
+	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/pgdialect"
+	"github.com/uptrace/bun/driver/pgdriver"
+	"go.uber.org/zap"
+)
+
+func main() {
+	if err := pkg.InitLogger(); err != nil {
+		panic("Failed to initialize logger: " + err.Error())
+	}
+	defer pkg.Logger.Sync()
+
+	logger := pkg.GetLogger()
+	logger.Info("Starting Analog Server")
+
+	ValidateEnvVars(logger)
+
+	app := spine.New()
+
+	db := newBunDB()
+
+	app.Constructor(
+		// 디비
+		func() *bun.DB { return db },
+
+		// 기타
+		func() *zap.Logger { return logger },
+
+		// 레포지토리
+		repository.NewLogRepository,
+		repository.NewCommentRepository,
+		repository.NewUserRepository,
+		repository.NewOAuthStateRepository,
+		repository.NewSessionRepository,
+
+		// 서비스
+		service.NewLogService,
+		service.NewUserService,
+		service.NewAnAccountOAuthService,
+
+		// 컨트롤러
+		controller.NewHealthController,
+		controller.NewLogController,
+		controller.NewUserController,
+		controller.NewAuthController,
+
+		// 인터셉터
+		interceptor.NewTxInterceptor,
+		interceptor.NewAuthInterceptor,
+	)
+
+	// 전역 인터셉터
+	app.Interceptor(
+		interceptor.NewCORSInterceptor(),
+		interceptor.NewRateLimitInterceptor(),
+		interceptor.NewLoggingInterceptor(),
+		interceptor.NewErrorInterceptor(),
+	)
+
+	routes.RegisterHealthRoutes(app)
+	routes.RegisterLogRoutes(app)
+	routes.RegisterUserRoutes(app)
+	routes.RegisterAuthRoutes(app)
+	
+	go func() {
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
+		<-sigint
+
+		logger.Info("Shutting down server gracefully...")
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		if err := db.Close(); err != nil {
+			logger.Error("Error closing database", zap.Error(err))
+		}
+
+		<-shutdownCtx.Done()
+		logger.Info("Server stopped")
+		os.Exit(0)
+	}()
+
+	port := os.Getenv("SERVER_PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	logger.Info("Server starting", zap.String("port", port))
+	app.Run(":" + port)
+}
+
+func newBunDB() *bun.DB {
+	host := GetEnv("DB_HOST", "localhost")
+	port := GetEnv("DB_PORT", "5437")
+	user := GetEnv("DB_USER", "test")
+	password := GetEnv("DB_PASSWORD", "test")
+	database := GetEnv("DB_NAME", "test")
+
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: os.Getenv("DB_TLS_SKIP_VERIFY") == "true",
+	}
+
+	pgconn := pgdriver.NewConnector(
+		pgdriver.WithNetwork("tcp"),
+		pgdriver.WithAddr(host+":"+port),
+		pgdriver.WithTLSConfig(tlsConfig),
+		pgdriver.WithUser(user),
+		pgdriver.WithPassword(password),
+		pgdriver.WithDatabase(database),
+		pgdriver.WithApplicationName("analog"),
+		pgdriver.WithTimeout(10*time.Second),
+		pgdriver.WithDialTimeout(5*time.Second),
+		pgdriver.WithReadTimeout(10*time.Second),
+		pgdriver.WithWriteTimeout(10*time.Second),
+	)
+
+	sqldb := sql.OpenDB(pgconn)
+
+	sqldb.SetMaxOpenConns(25)
+	sqldb.SetMaxIdleConns(5)
+	sqldb.SetConnMaxLifetime(5 * time.Minute)
+	sqldb.SetConnMaxIdleTime(10 * time.Minute)
+
+	db := bun.NewDB(sqldb, pgdialect.New())
+
+	if os.Getenv("DEBUG") == "true" {
+		db.AddQueryHook(&debugHook{})
+	}
+
+	return db
+}
+
+func GetEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+type debugHook struct{}
+
+func (h *debugHook) BeforeQuery(ctx context.Context, event *bun.QueryEvent) context.Context {
+	return ctx
+}
+
+func (h *debugHook) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
+	logger := pkg.GetLogger()
+	logger.Debug("Database query",
+		zap.String("query", event.Query),
+		zap.Duration("duration", time.Since(event.StartTime)),
+	)
+}
+
+func ValidateEnvVars(logger *zap.Logger) {
+	required := []string{
+		"AN_ACCOUNT_BASE_URL",
+		"AN_ACCOUNT_CLIENT_ID",
+		"AN_ACCOUNT_CLIENT_SECRET",
+	}
+
+	for _, key := range required {
+		if os.Getenv(key) == "" {
+			logger.Fatal("Missing required environment variable",
+				zap.String("variable", key))
+		}
+	}
+
+	if os.Getenv("DB_TLS_SKIP_VERIFY") == "true" {
+		logger.Warn("Database TLS certificate validation is disabled - only use in development")
+	}
+}

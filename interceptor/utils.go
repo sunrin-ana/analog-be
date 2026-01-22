@@ -1,0 +1,8 @@
+package interceptor
+
+func getString(v any) string {
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return ""
+}
