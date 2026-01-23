@@ -2,11 +2,10 @@ package controller
 
 import (
 	"analog-be/dto"
-	"analog-be/entity"
 	"analog-be/pkg"
 	"analog-be/service"
 	"context"
-	"fmt"
+	"github.com/NARUBROWN/spine/pkg/path"
 	"strconv"
 
 	"github.com/NARUBROWN/spine/pkg/query"
@@ -53,17 +52,8 @@ func (c *LogController) GetList(ctx context.Context, q query.Values) (*dto.Pagin
 	}, nil
 }
 
-func (c *LogController) GetLog(ctx context.Context, q query.Values) (*dto.LogResponse, error) {
-	idStr := q.Get("id")
-	if idStr == "" {
-		return nil, fmt.Errorf("log id is required")
-	}
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid log id")
-	}
-
-	log, err := c.logService.Get(ctx, (*entity.ID)(&id))
+func (c *LogController) GetLog(ctx context.Context, id path.Int) (*dto.LogResponse, error) {
+	log, err := c.logService.Get(ctx, &id.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -121,22 +111,14 @@ func (c *LogController) CreateLog(ctx context.Context, req dto.LogCreateRequest)
 	return &res, nil
 }
 
-func (c *LogController) UpdateLog(ctx context.Context, q query.Values, req dto.LogUpdateRequest) (*dto.LogResponse, error) {
-	idStr := q.Get("id")
-	if idStr == "" {
-		return nil, fmt.Errorf("log id is required")
-	}
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid log id")
-	}
+func (c *LogController) UpdateLog(ctx context.Context, id path.Int, req dto.LogUpdateRequest) (*dto.LogResponse, error) {
 
 	userID, ok := pkg.GetUserID(ctx)
 	if !ok {
 		return nil, pkg.NewUnauthorizedError("Authentication required")
 	}
 
-	log, err := c.logService.Get(ctx, (*entity.ID)(&id))
+	log, err := c.logService.Get(ctx, &id.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +135,7 @@ func (c *LogController) UpdateLog(ctx context.Context, q query.Values, req dto.L
 		return nil, pkg.NewForbiddenError("You don't have permission to update this log")
 	}
 
-	updatedLog, err := c.logService.Update(ctx, (*entity.ID)(&id), req, &userID)
+	updatedLog, err := c.logService.Update(ctx, &id.Value, req, &userID)
 	if err != nil {
 		return nil, err
 	}
@@ -162,22 +144,14 @@ func (c *LogController) UpdateLog(ctx context.Context, q query.Values, req dto.L
 	return &res, nil
 }
 
-func (c *LogController) DeleteLog(ctx context.Context, q query.Values) (interface{}, error) {
-	idStr := q.Get("id")
-	if idStr == "" {
-		return nil, fmt.Errorf("log id is required")
-	}
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid log id")
-	}
+func (c *LogController) DeleteLog(ctx context.Context, id path.Int) (interface{}, error) {
 
 	userID, ok := pkg.GetUserID(ctx)
 	if !ok {
 		return nil, pkg.NewUnauthorizedError("Authentication required")
 	}
 
-	log, err := c.logService.Get(ctx, (*entity.ID)(&id))
+	log, err := c.logService.Get(ctx, &id.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +168,7 @@ func (c *LogController) DeleteLog(ctx context.Context, q query.Values) (interfac
 		return nil, pkg.NewForbiddenError("You don't have permission to delete this log")
 	}
 
-	err = c.logService.Delete(ctx, (*entity.ID)(&id))
+	err = c.logService.Delete(ctx, &id.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -202,15 +176,7 @@ func (c *LogController) DeleteLog(ctx context.Context, q query.Values) (interfac
 	return map[string]string{"message": "log deleted successfully"}, nil
 }
 
-func (c *LogController) CreateComment(ctx context.Context, q query.Values, req dto.CommentCreateRequest) (*dto.CommentResponse, error) {
-	logIDStr := q.Get("id")
-	if logIDStr == "" {
-		return nil, fmt.Errorf("log id is required")
-	}
-	logID, err := strconv.ParseInt(logIDStr, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid log id")
-	}
+func (c *LogController) CreateComment(ctx context.Context, id path.Int, req dto.CommentCreateRequest) (*dto.CommentResponse, error) {
 
 	if err := pkg.Validate(&req); err != nil {
 		return nil, err
@@ -221,7 +187,7 @@ func (c *LogController) CreateComment(ctx context.Context, q query.Values, req d
 		return nil, pkg.NewUnauthorizedError("Authentication required")
 	}
 
-	comment, err := c.commentService.Create(ctx, req, (*entity.ID)(&logID), &authorID)
+	comment, err := c.commentService.Create(ctx, req, &id.Value, &authorID)
 	if err != nil {
 		return nil, err
 	}
@@ -230,21 +196,13 @@ func (c *LogController) CreateComment(ctx context.Context, q query.Values, req d
 	return &res, nil
 }
 
-func (c *LogController) UpdateComment(ctx context.Context, q query.Values, req dto.CommentUpdateRequest) (*dto.CommentResponse, error) {
-	commentIDStr := q.Get("commentId")
-	if commentIDStr == "" {
-		return nil, fmt.Errorf("comment id is required")
-	}
-	commentID, err := strconv.ParseInt(commentIDStr, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid comment id")
-	}
+func (c *LogController) UpdateComment(ctx context.Context, id path.Int, req dto.CommentUpdateRequest) (*dto.CommentResponse, error) {
 
 	if err := pkg.Validate(&req); err != nil {
 		return nil, err
 	}
 
-	comment, err := c.commentService.Update(ctx, (*entity.ID)(&commentID), req)
+	comment, err := c.commentService.Update(ctx, &id.Value, req)
 	if err != nil {
 		return nil, err
 	}
@@ -253,17 +211,9 @@ func (c *LogController) UpdateComment(ctx context.Context, q query.Values, req d
 	return &res, nil
 }
 
-func (c *LogController) DeleteComment(ctx context.Context, q query.Values) (interface{}, error) {
-	commentIDStr := q.Get("commentId")
-	if commentIDStr == "" {
-		return nil, fmt.Errorf("comment id is required")
-	}
-	commentID, err := strconv.ParseInt(commentIDStr, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid comment id")
-	}
+func (c *LogController) DeleteComment(ctx context.Context, id path.Int) (interface{}, error) {
 
-	err = c.commentService.Delete(ctx, (*entity.ID)(&commentID))
+	err := c.commentService.Delete(ctx, &id.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +221,7 @@ func (c *LogController) DeleteComment(ctx context.Context, q query.Values) (inte
 	return map[string]string{"message": "comment deleted successfully"}, nil
 }
 
-func (c *LogController) FindAllCommentByLogID(ctx context.Context, q query.Values) ([]dto.CommentResponse, error) {
+func (c *LogController) FindAllCommentByLogID(ctx context.Context, q query.Values, id path.Int) ([]dto.CommentResponse, error) {
 	limit := 20
 	if limitStr := q.Get("limit"); limitStr != "" {
 		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
@@ -285,16 +235,8 @@ func (c *LogController) FindAllCommentByLogID(ctx context.Context, q query.Value
 			offset = parsedOffset
 		}
 	}
-	idStr := q.Get("id")
-	if idStr == "" {
-		return nil, fmt.Errorf("log id is required")
-	}
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid log id")
-	}
 
-	result, err := c.commentService.FindByLogID(ctx, &id, limit, offset)
+	result, err := c.commentService.FindByLogID(ctx, &id.Value, limit, offset)
 	if err != nil {
 		return nil, err
 	}

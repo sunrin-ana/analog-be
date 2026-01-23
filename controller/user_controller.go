@@ -2,10 +2,10 @@ package controller
 
 import (
 	"analog-be/dto"
-	"analog-be/entity"
 	"analog-be/service"
 	"context"
 	"fmt"
+	"github.com/NARUBROWN/spine/pkg/path"
 	"strconv"
 
 	"github.com/NARUBROWN/spine/pkg/query"
@@ -21,18 +21,9 @@ func NewUserController(userService *service.UserService) *UserController {
 	}
 }
 
-func (c *UserController) GetUser(ctx context.Context, q query.Values) (*dto.UserResponse, error) {
-	idStr := q.Get("id")
-	if idStr == "" {
-		return nil, fmt.Errorf("user id is required")
-	}
+func (c *UserController) GetUser(ctx context.Context, id path.Int) (*dto.UserResponse, error) {
 
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user id: %w", err)
-	}
-
-	user, err := c.userService.Get(ctx, (*entity.ID)(&id))
+	user, err := c.userService.Get(ctx, &id.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -55,18 +46,9 @@ func (c *UserController) CreateUser(ctx context.Context, req dto.UserCreateReque
 	return &res, nil
 }
 
-func (c *UserController) UpdateUser(ctx context.Context, q query.Values, req dto.UserUpdateRequest) (*dto.UserResponse, error) {
-	idStr := q.Get("id")
-	if idStr == "" {
-		return nil, fmt.Errorf("user id is required")
-	}
+func (c *UserController) UpdateUser(ctx context.Context, id path.Int, req dto.UserUpdateRequest) (*dto.UserResponse, error) {
 
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user id: %w", err)
-	}
-
-	user, err := c.userService.Update(ctx, (*entity.ID)(&id), req)
+	user, err := c.userService.Update(ctx, &id.Value, req)
 	if err != nil {
 		return nil, err
 	}
@@ -75,18 +57,9 @@ func (c *UserController) UpdateUser(ctx context.Context, q query.Values, req dto
 	return &res, nil
 }
 
-func (c *UserController) DeleteUser(ctx context.Context, q query.Values) (interface{}, error) {
-	idStr := q.Get("id")
-	if idStr == "" {
-		return nil, fmt.Errorf("user id is required")
-	}
+func (c *UserController) DeleteUser(ctx context.Context, id path.Int) (interface{}, error) {
 
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user id: %w", err)
-	}
-
-	err = c.userService.Delete(ctx, (*entity.ID)(&id))
+	err := c.userService.Delete(ctx, &id.Value)
 	if err != nil {
 		return nil, err
 	}
