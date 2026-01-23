@@ -23,7 +23,7 @@ func NewLogController(logService *service.LogService, commentService *service.Co
 	}
 }
 
-func (c *LogController) GetList(ctx context.Context, q query.Values) (*dto.PaginatedResult[dto.LogResponse], error) {
+func (c *LogController) GetList(ctx context.Context, q query.Values) (dto.PaginatedResult[dto.LogResponse], error) {
 	limit, _ := strconv.Atoi(q.Get("limit"))
 	offset, _ := strconv.Atoi(q.Get("offset"))
 
@@ -36,7 +36,7 @@ func (c *LogController) GetList(ctx context.Context, q query.Values) (*dto.Pagin
 
 	paginatedResult, err := c.logService.GetList(ctx, limit, offset)
 	if err != nil {
-		return nil, err
+		return dto.PaginatedResult[dto.LogResponse]{}, err
 	}
 
 	logResponses := make([]dto.LogResponse, len(paginatedResult.Items))
@@ -44,7 +44,7 @@ func (c *LogController) GetList(ctx context.Context, q query.Values) (*dto.Pagin
 		logResponses[i] = dto.NewLogResponse(log)
 	}
 
-	return &dto.PaginatedResult[dto.LogResponse]{
+	return dto.PaginatedResult[dto.LogResponse]{
 		Items:  logResponses,
 		Total:  paginatedResult.Total,
 		Limit:  paginatedResult.Limit,
@@ -52,17 +52,17 @@ func (c *LogController) GetList(ctx context.Context, q query.Values) (*dto.Pagin
 	}, nil
 }
 
-func (c *LogController) GetLog(ctx context.Context, id path.Int) (*dto.LogResponse, error) {
+func (c *LogController) GetLog(ctx context.Context, id path.Int) (dto.LogResponse, error) {
 	log, err := c.logService.Get(ctx, &id.Value)
 	if err != nil {
-		return nil, err
+		return dto.LogResponse{}, err
 	}
 
 	res := dto.NewLogResponse(log)
-	return &res, nil
+	return res, nil
 }
 
-func (c *LogController) SearchLogs(ctx context.Context, q query.Values) (*dto.PaginatedResult[dto.LogResponse], error) {
+func (c *LogController) SearchLogs(ctx context.Context, q query.Values) (dto.PaginatedResult[dto.LogResponse], error) {
 	searchQuery := q.Get("q")
 	limit, _ := strconv.Atoi(q.Get("limit"))
 	offset, _ := strconv.Atoi(q.Get("offset"))
@@ -76,7 +76,7 @@ func (c *LogController) SearchLogs(ctx context.Context, q query.Values) (*dto.Pa
 
 	paginatedResult, err := c.logService.Search(ctx, searchQuery, limit, offset)
 	if err != nil {
-		return nil, err
+		return dto.PaginatedResult[dto.LogResponse]{}, err
 	}
 
 	logResponses := make([]dto.LogResponse, len(paginatedResult.Items))
@@ -84,7 +84,7 @@ func (c *LogController) SearchLogs(ctx context.Context, q query.Values) (*dto.Pa
 		logResponses[i] = dto.NewLogResponse(log)
 	}
 
-	return &dto.PaginatedResult[dto.LogResponse]{
+	return dto.PaginatedResult[dto.LogResponse]{
 		Items:  logResponses,
 		Total:  paginatedResult.Total,
 		Limit:  paginatedResult.Limit,
@@ -92,35 +92,35 @@ func (c *LogController) SearchLogs(ctx context.Context, q query.Values) (*dto.Pa
 	}, nil
 }
 
-func (c *LogController) CreateLog(ctx context.Context, req dto.LogCreateRequest) (*dto.LogResponse, error) {
+func (c *LogController) CreateLog(ctx context.Context, req dto.LogCreateRequest) (dto.LogResponse, error) {
 	if err := pkg.Validate(&req); err != nil {
-		return nil, err
+		return dto.LogResponse{}, err
 	}
 
 	authorID, ok := pkg.GetUserID(ctx)
 	if !ok {
-		return nil, pkg.NewUnauthorizedError("Authentication required")
+		return dto.LogResponse{}, pkg.NewUnauthorizedError("Authentication required")
 	}
 
 	log, err := c.logService.Create(ctx, req, &authorID)
 	if err != nil {
-		return nil, err
+		return dto.LogResponse{}, err
 	}
 
 	res := dto.NewLogResponse(log)
-	return &res, nil
+	return res, nil
 }
 
-func (c *LogController) UpdateLog(ctx context.Context, id path.Int, req dto.LogUpdateRequest) (*dto.LogResponse, error) {
+func (c *LogController) UpdateLog(ctx context.Context, id path.Int, req dto.LogUpdateRequest) (dto.LogResponse, error) {
 
 	userID, ok := pkg.GetUserID(ctx)
 	if !ok {
-		return nil, pkg.NewUnauthorizedError("Authentication required")
+		return dto.LogResponse{}, pkg.NewUnauthorizedError("Authentication required")
 	}
 
 	log, err := c.logService.Get(ctx, &id.Value)
 	if err != nil {
-		return nil, err
+		return dto.LogResponse{}, err
 	}
 
 	hasPermission := false
@@ -132,16 +132,16 @@ func (c *LogController) UpdateLog(ctx context.Context, id path.Int, req dto.LogU
 	}
 
 	if !hasPermission {
-		return nil, pkg.NewForbiddenError("You don't have permission to update this log")
+		return dto.LogResponse{}, pkg.NewForbiddenError("You don't have permission to update this log")
 	}
 
 	updatedLog, err := c.logService.Update(ctx, &id.Value, req, &userID)
 	if err != nil {
-		return nil, err
+		return dto.LogResponse{}, err
 	}
 
 	res := dto.NewLogResponse(updatedLog)
-	return &res, nil
+	return res, nil
 }
 
 func (c *LogController) DeleteLog(ctx context.Context, id path.Int) (interface{}, error) {
@@ -176,39 +176,39 @@ func (c *LogController) DeleteLog(ctx context.Context, id path.Int) (interface{}
 	return map[string]string{"message": "log deleted successfully"}, nil
 }
 
-func (c *LogController) CreateComment(ctx context.Context, id path.Int, req dto.CommentCreateRequest) (*dto.CommentResponse, error) {
+func (c *LogController) CreateComment(ctx context.Context, id path.Int, req dto.CommentCreateRequest) (dto.CommentResponse, error) {
 
 	if err := pkg.Validate(&req); err != nil {
-		return nil, err
+		return dto.CommentResponse{}, err
 	}
 
 	authorID, ok := pkg.GetUserID(ctx)
 	if !ok {
-		return nil, pkg.NewUnauthorizedError("Authentication required")
+		return dto.CommentResponse{}, pkg.NewUnauthorizedError("Authentication required")
 	}
 
 	comment, err := c.commentService.Create(ctx, req, &id.Value, &authorID)
 	if err != nil {
-		return nil, err
+		return dto.CommentResponse{}, err
 	}
 
 	res := dto.NewCommentResponse(comment)
-	return &res, nil
+	return res, nil
 }
 
-func (c *LogController) UpdateComment(ctx context.Context, id path.Int, req dto.CommentUpdateRequest) (*dto.CommentResponse, error) {
+func (c *LogController) UpdateComment(ctx context.Context, id path.Int, req dto.CommentUpdateRequest) (dto.CommentResponse, error) {
 
 	if err := pkg.Validate(&req); err != nil {
-		return nil, err
+		return dto.CommentResponse{}, err
 	}
 
 	comment, err := c.commentService.Update(ctx, &id.Value, req)
 	if err != nil {
-		return nil, err
+		return dto.CommentResponse{}, err
 	}
 
 	res := dto.NewCommentResponse(comment)
-	return &res, nil
+	return res, nil
 }
 
 func (c *LogController) DeleteComment(ctx context.Context, id path.Int) (interface{}, error) {
@@ -221,7 +221,7 @@ func (c *LogController) DeleteComment(ctx context.Context, id path.Int) (interfa
 	return map[string]string{"message": "comment deleted successfully"}, nil
 }
 
-func (c *LogController) FindAllCommentByLogID(ctx context.Context, q query.Values, id path.Int) ([]dto.CommentResponse, error) {
+func (c *LogController) FindAllCommentByLogID(ctx context.Context, q query.Values, id path.Int) (dto.PaginatedResult[dto.CommentResponse], error) {
 	limit := 20
 	if limitStr := q.Get("limit"); limitStr != "" {
 		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
@@ -238,7 +238,7 @@ func (c *LogController) FindAllCommentByLogID(ctx context.Context, q query.Value
 
 	result, err := c.commentService.FindByLogID(ctx, &id.Value, limit, offset)
 	if err != nil {
-		return nil, err
+		return dto.PaginatedResult[dto.CommentResponse]{}, err
 	}
 
 	commentResponses := make([]dto.CommentResponse, len(result.Items))
@@ -246,5 +246,10 @@ func (c *LogController) FindAllCommentByLogID(ctx context.Context, q query.Value
 		commentResponses[i] = dto.NewCommentResponse(item)
 	}
 
-	return commentResponses, nil
+	return dto.PaginatedResult[dto.CommentResponse]{
+		Items:  commentResponses,
+		Total:  result.Total,
+		Limit:  limit,
+		Offset: offset,
+	}, nil
 }

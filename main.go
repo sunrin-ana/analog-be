@@ -77,12 +77,14 @@ func main() {
 		service.NewUserService,
 		service.NewAnAccountOAuthService,
 		service.NewCommentService,
+		service.NewTopicService,
 
 		// 컨트롤러
 		controller.NewHealthController,
 		controller.NewLogController,
 		controller.NewUserController,
 		controller.NewAuthController,
+		controller.NewTopicController,
 
 		// 인터셉터
 		interceptor.NewTxInterceptor,
@@ -101,6 +103,7 @@ func main() {
 	routes.RegisterLogRoutes(app)
 	routes.RegisterUserRoutes(app)
 	routes.RegisterAuthRoutes(app)
+	routes.RegisterTopicRoutes(app)
 
 	go func() {
 		sigint := make(chan os.Signal, 1)

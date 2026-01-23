@@ -21,43 +21,43 @@ func NewUserController(userService *service.UserService) *UserController {
 	}
 }
 
-func (c *UserController) GetUser(ctx context.Context, id path.Int) (*dto.UserResponse, error) {
+func (c *UserController) Get(ctx context.Context, id path.Int) (dto.UserResponse, error) {
 
 	user, err := c.userService.Get(ctx, &id.Value)
 	if err != nil {
-		return nil, err
+		return dto.UserResponse{}, err
 	}
 
 	res := dto.NewUserResponse(user)
-	return &res, nil
+	return res, nil
 }
 
-func (c *UserController) CreateUser(ctx context.Context, req dto.UserCreateRequest) (*dto.UserResponse, error) {
+func (c *UserController) Create(ctx context.Context, req dto.UserCreateRequest) (dto.UserResponse, error) {
 	if req.Name == "" {
-		return nil, fmt.Errorf("name is required")
+		return dto.UserResponse{}, fmt.Errorf("name is required")
 	}
 
 	user, err := c.userService.Create(ctx, req)
 	if err != nil {
-		return nil, err
+		return dto.UserResponse{}, err
 	}
 
 	res := dto.NewUserResponse(user)
-	return &res, nil
+	return res, nil
 }
 
-func (c *UserController) UpdateUser(ctx context.Context, id path.Int, req dto.UserUpdateRequest) (*dto.UserResponse, error) {
+func (c *UserController) Update(ctx context.Context, id path.Int, req dto.UserUpdateRequest) (dto.UserResponse, error) {
 
 	user, err := c.userService.Update(ctx, &id.Value, req)
 	if err != nil {
-		return nil, err
+		return dto.UserResponse{}, err
 	}
 
 	res := dto.NewUserResponse(user)
-	return &res, nil
+	return res, nil
 }
 
-func (c *UserController) DeleteUser(ctx context.Context, id path.Int) (interface{}, error) {
+func (c *UserController) Delete(ctx context.Context, id path.Int) (interface{}, error) {
 
 	err := c.userService.Delete(ctx, &id.Value)
 	if err != nil {
@@ -67,10 +67,10 @@ func (c *UserController) DeleteUser(ctx context.Context, id path.Int) (interface
 	return map[string]string{"message": "user deleted successfully"}, nil
 }
 
-func (c *UserController) SearchUser(ctx context.Context, q query.Values) (*dto.UserListResponse, error) {
+func (c *UserController) Search(ctx context.Context, q query.Values) (dto.PaginatedResult[dto.UserResponse], error) {
 	searchQuery := q.Get("q")
 	if searchQuery == "" {
-		return nil, fmt.Errorf("search query is required")
+		return dto.PaginatedResult[dto.UserResponse]{}, fmt.Errorf("search query is required")
 	}
 
 	limit := 20
@@ -89,7 +89,7 @@ func (c *UserController) SearchUser(ctx context.Context, q query.Values) (*dto.U
 
 	paginatedResult, err := c.userService.Search(ctx, searchQuery, limit, offset)
 	if err != nil {
-		return nil, err
+		return dto.PaginatedResult[dto.UserResponse]{}, err
 	}
 
 	userResponses := make([]dto.UserResponse, len(paginatedResult.Items))
@@ -97,8 +97,8 @@ func (c *UserController) SearchUser(ctx context.Context, q query.Values) (*dto.U
 		userResponses[i] = dto.NewUserResponse(user)
 	}
 
-	return &dto.UserListResponse{
-		Users:  userResponses,
+	return dto.PaginatedResult[dto.UserResponse]{
+		Items:  userResponses,
 		Total:  paginatedResult.Total,
 		Limit:  paginatedResult.Limit,
 		Offset: paginatedResult.Offset,
