@@ -116,7 +116,7 @@ func (s *AnAccountService) HandleCallback(ctx context.Context, code, state strin
 		return nil, err
 	}
 
-	session, err := s.createSession(ctx, user.ID)
+	session, err := s.createSession(ctx, &user.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
@@ -276,10 +276,10 @@ func (s *AnAccountService) getUserInfo(accessToken string) (*dto.UserInfoRespons
 }
 
 func (s *AnAccountService) findOrCreateUser(ctx context.Context, userInfo *dto.UserInfoResponse, isSignup bool) (*entity.User, error) {
-	var userID int64
+	var userID entity.ID
 	fmt.Sscanf(userInfo.Sub, "%d", &userID)
 
-	user, err := s.userRepo.FindByID(ctx, int(userID))
+	user, err := s.userRepo.FindByID(ctx, &userID)
 	if err == nil {
 		if isSignup {
 			return nil, fmt.Errorf("user already exists, please login instead")
@@ -302,7 +302,7 @@ func (s *AnAccountService) findOrCreateUser(ctx context.Context, userInfo *dto.U
 		Connections:  []string{},
 	}
 
-	err = s.userRepo.Create(ctx, newUser)
+	newUser, err = s.userRepo.Create(ctx, newUser)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
@@ -310,7 +310,7 @@ func (s *AnAccountService) findOrCreateUser(ctx context.Context, userInfo *dto.U
 	return newUser, nil
 }
 
-func (s *AnAccountService) createSession(ctx context.Context, userID int64) (*entity.Session, error) {
+func (s *AnAccountService) createSession(ctx context.Context, userID *entity.ID) (*entity.Session, error) {
 	sessionToken, err := generateSecureToken(32)
 	if err != nil {
 		return nil, err
@@ -318,7 +318,7 @@ func (s *AnAccountService) createSession(ctx context.Context, userID int64) (*en
 
 	session := &entity.Session{
 		SessionToken: sessionToken,
-		UserID:       userID,
+		UserID:       *userID,
 		ExpiresAt:    time.Now().UTC().Add(7 * 24 * time.Hour), // 7 days
 		CreatedAt:    time.Now().UTC(),
 	}

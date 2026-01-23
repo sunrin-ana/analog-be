@@ -17,7 +17,7 @@ func NewCommentRepository(db bun.IDB) *CommentRepository {
 	}
 }
 
-func (r *CommentRepository) FindByID(ctx context.Context, id string) (*entity.Comment, error) {
+func (r *CommentRepository) FindByID(ctx context.Context, id *entity.ID) (*entity.Comment, error) {
 	comment := new(entity.Comment)
 
 	err := r.db.NewSelect().
@@ -33,27 +33,27 @@ func (r *CommentRepository) FindByID(ctx context.Context, id string) (*entity.Co
 	return comment, nil
 }
 
-func (r *CommentRepository) FindByLogID(ctx context.Context, logID string) ([]*entity.Comment, error) {
+func (r *CommentRepository) FindByLogID(ctx context.Context, logID *entity.ID) ([]*entity.Comment, *int, error) {
 	var comments []*entity.Comment
 
-	err := r.db.NewSelect().
+	count, err := r.db.NewSelect().
 		Model(&comments).
 		Where("log_id = ?", logID).
 		Order("created_at ASC").
-		Scan(ctx)
+		ScanAndCount(ctx)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return comments, nil
+	return comments, &count, nil
 }
 
-func (r *CommentRepository) Create(ctx context.Context, comment *entity.Comment) error {
+func (r *CommentRepository) Create(ctx context.Context, comment *entity.Comment) (*entity.Comment, error) {
 	_, err := r.db.NewInsert().
 		Model(comment).
 		Exec(ctx)
-	return err
+	return comment, err
 }
 
 func (r *CommentRepository) Update(ctx context.Context, comment *entity.Comment) error {
@@ -64,7 +64,7 @@ func (r *CommentRepository) Update(ctx context.Context, comment *entity.Comment)
 	return err
 }
 
-func (r *CommentRepository) Delete(ctx context.Context, id string) error {
+func (r *CommentRepository) Delete(ctx context.Context, id *entity.ID) error {
 	_, err := r.db.NewDelete().
 		Model((*entity.Comment)(nil)).
 		Where("id = ?", id).
@@ -72,7 +72,7 @@ func (r *CommentRepository) Delete(ctx context.Context, id string) error {
 	return err
 }
 
-func (r *CommentRepository) DeleteByLogID(ctx context.Context, logID string) error {
+func (r *CommentRepository) DeleteByLogID(ctx context.Context, logID *entity.ID) error {
 	_, err := r.db.NewDelete().
 		Model((*entity.Comment)(nil)).
 		Where("log_id = ?", logID).

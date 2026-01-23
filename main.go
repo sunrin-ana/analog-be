@@ -2,6 +2,7 @@ package main
 
 import (
 	"analog-be/controller"
+	"analog-be/entity"
 	"analog-be/interceptor"
 	"analog-be/pkg"
 	"analog-be/repository"
@@ -10,6 +11,7 @@ import (
 	"context"
 	"crypto/tls"
 	"database/sql"
+	"github.com/joho/godotenv"
 	"os"
 	"os/signal"
 	"syscall"
@@ -31,11 +33,29 @@ func main() {
 	logger := pkg.GetLogger()
 	logger.Info("Starting Analog Server")
 
+	err := godotenv.Load()
+	if err != nil {
+		logger.Fatal("Error loading .env file")
+	}
+
 	ValidateEnvVars(logger)
 
 	app := spine.New()
 
 	db := newBunDB()
+
+	db.RegisterModel(
+		// relation
+		(*entity.LogToUser)(nil),
+		(*entity.LogToTopic)(nil),
+
+		(*entity.Log)(nil),
+		(*entity.Topic)(nil),
+		(*entity.User)(nil),
+		(*entity.Comment)(nil),
+		(*entity.OAuthState)(nil),
+		(*entity.Session)(nil),
+	)
 
 	app.Constructor(
 		// 디비
@@ -45,16 +65,18 @@ func main() {
 		func() *zap.Logger { return logger },
 
 		// 레포지토리
+		repository.NewUserRepository,
 		repository.NewLogRepository,
 		repository.NewCommentRepository,
-		repository.NewUserRepository,
 		repository.NewOAuthStateRepository,
 		repository.NewSessionRepository,
+		repository.NewTopicRepository,
 
 		// 서비스
 		service.NewLogService,
 		service.NewUserService,
 		service.NewAnAccountOAuthService,
+		service.NewCommentService,
 
 		// 컨트롤러
 		controller.NewHealthController,
@@ -79,7 +101,7 @@ func main() {
 	routes.RegisterLogRoutes(app)
 	routes.RegisterUserRoutes(app)
 	routes.RegisterAuthRoutes(app)
-	
+
 	go func() {
 		sigint := make(chan os.Signal, 1)
 		signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
@@ -131,6 +153,7 @@ func newBunDB() *bun.DB {
 		pgdriver.WithDialTimeout(5*time.Second),
 		pgdriver.WithReadTimeout(10*time.Second),
 		pgdriver.WithWriteTimeout(10*time.Second),
+		pgdriver.WithInsecure(true),
 	)
 
 	sqldb := sql.OpenDB(pgconn)

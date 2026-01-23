@@ -2,6 +2,7 @@ package controller
 
 import (
 	"analog-be/dto"
+	"analog-be/entity"
 	"analog-be/service"
 	"context"
 	"fmt"
@@ -31,7 +32,13 @@ func (c *UserController) GetUser(ctx context.Context, q query.Values) (*dto.User
 		return nil, fmt.Errorf("invalid user id: %w", err)
 	}
 
-	return c.userService.GetUser(ctx, id)
+	user, err := c.userService.Get(ctx, (*entity.ID)(&id))
+	if err != nil {
+		return nil, err
+	}
+
+	res := dto.NewUserResponse(user)
+	return &res, nil
 }
 
 func (c *UserController) CreateUser(ctx context.Context, req dto.UserCreateRequest) (*dto.UserResponse, error) {
@@ -39,7 +46,13 @@ func (c *UserController) CreateUser(ctx context.Context, req dto.UserCreateReque
 		return nil, fmt.Errorf("name is required")
 	}
 
-	return c.userService.CreateUser(ctx, req)
+	user, err := c.userService.Create(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	res := dto.NewUserResponse(user)
+	return &res, nil
 }
 
 func (c *UserController) UpdateUser(ctx context.Context, q query.Values, req dto.UserUpdateRequest) (*dto.UserResponse, error) {
@@ -53,7 +66,13 @@ func (c *UserController) UpdateUser(ctx context.Context, q query.Values, req dto
 		return nil, fmt.Errorf("invalid user id: %w", err)
 	}
 
-	return c.userService.UpdateUser(ctx, id, req)
+	user, err := c.userService.Update(ctx, (*entity.ID)(&id), req)
+	if err != nil {
+		return nil, err
+	}
+
+	res := dto.NewUserResponse(user)
+	return &res, nil
 }
 
 func (c *UserController) DeleteUser(ctx context.Context, q query.Values) (interface{}, error) {
@@ -67,7 +86,7 @@ func (c *UserController) DeleteUser(ctx context.Context, q query.Values) (interf
 		return nil, fmt.Errorf("invalid user id: %w", err)
 	}
 
-	err = c.userService.DeleteUser(ctx, id)
+	err = c.userService.Delete(ctx, (*entity.ID)(&id))
 	if err != nil {
 		return nil, err
 	}
@@ -95,5 +114,20 @@ func (c *UserController) SearchUser(ctx context.Context, q query.Values) (*dto.U
 		}
 	}
 
-	return c.userService.SearchUsers(ctx, searchQuery, limit, offset)
+	paginatedResult, err := c.userService.Search(ctx, searchQuery, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	userResponses := make([]dto.UserResponse, len(paginatedResult.Items))
+	for i, user := range paginatedResult.Items {
+		userResponses[i] = dto.NewUserResponse(user)
+	}
+
+	return &dto.UserListResponse{
+		Users:  userResponses,
+		Total:  paginatedResult.Total,
+		Limit:  paginatedResult.Limit,
+		Offset: paginatedResult.Offset,
+	}, nil
 }

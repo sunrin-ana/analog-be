@@ -6,8 +6,6 @@ import (
 	"analog-be/repository"
 	"context"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type LogService struct {
@@ -22,38 +20,16 @@ func NewLogService(logRepository *repository.LogRepository, commentRepository *r
 	}
 }
 
-func (s *LogService) GetLog(ctx context.Context, id string) (*dto.LogResponse, error) {
+func (s *LogService) Get(ctx context.Context, id *entity.ID) (*entity.Log, error) {
 	log, err := s.logRepository.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	comments := make([]dto.CommentResponse, 0)
-	if log.Comments != nil {
-		for _, comment := range log.Comments {
-			comments = append(comments, dto.CommentResponse{
-				ID:        comment.ID,
-				LogID:     comment.LogID,
-				Author:    comment.Author,
-				Content:   comment.Content,
-				CreatedAt: comment.CreatedAt.Format(time.RFC3339),
-			})
-		}
-	}
-
-	return &dto.LogResponse{
-		ID:          log.ID,
-		Title:       log.Title,
-		Topics:      log.Topics,
-		Generations: log.Generations,
-		Content:     log.Content,
-		CreatedAt:   log.CreatedAt.Format(time.RFC3339),
-		LoggedBy:    log.LoggedBy,
-		Comments:    comments,
-	}, nil
+	return log, nil
 }
 
-func (s *LogService) GetListOfLog(ctx context.Context, limit int, offset int) (*dto.LogListResponse, error) {
+func (s *LogService) GetList(ctx context.Context, limit int, offset int) (*dto.PaginatedResult[*entity.Log], error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -61,38 +37,20 @@ func (s *LogService) GetListOfLog(ctx context.Context, limit int, offset int) (*
 		offset = 0
 	}
 
-	logs, err := s.logRepository.FindAll(ctx, limit, offset)
+	logs, total, err := s.logRepository.FindAll(ctx, limit, offset)
 	if err != nil {
 		return nil, err
 	}
 
-	total, err := s.logRepository.Count(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	logResponses := make([]*dto.LogResponse, len(logs))
-	for i, log := range logs {
-		logResponses[i] = &dto.LogResponse{
-			ID:          log.ID,
-			Title:       log.Title,
-			Topics:      log.Topics,
-			Generations: log.Generations,
-			Content:     log.Content,
-			CreatedAt:   log.CreatedAt.Format(time.RFC3339),
-			LoggedBy:    log.LoggedBy,
-		}
-	}
-
-	return &dto.LogListResponse{
-		Logs:   logResponses,
-		Total:  total,
+	return &dto.PaginatedResult[*entity.Log]{
+		Items:  logs,
+		Total:  *total,
 		Limit:  limit,
 		Offset: offset,
 	}, nil
 }
 
-func (s *LogService) SearchLogs(ctx context.Context, query string, limit int, offset int) (*dto.LogListResponse, error) {
+func (s *LogService) Search(ctx context.Context, query string, limit int, offset int) (*dto.PaginatedResult[*entity.Log], error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -100,73 +58,44 @@ func (s *LogService) SearchLogs(ctx context.Context, query string, limit int, of
 		offset = 0
 	}
 
-	logs, err := s.logRepository.Search(ctx, query, limit, offset)
+	logs, total, err := s.logRepository.Search(ctx, query, limit, offset)
 	if err != nil {
 		return nil, err
 	}
 
-	logResponses := make([]*dto.LogResponse, len(logs))
-	for i, log := range logs {
-		logResponses[i] = &dto.LogResponse{
-			ID:          log.ID,
-			Title:       log.Title,
-			Topics:      log.Topics,
-			Generations: log.Generations,
-			Content:     log.Content,
-			CreatedAt:   log.CreatedAt.Format(time.RFC3339),
-			LoggedBy:    log.LoggedBy,
-		}
-	}
-
-	return &dto.LogListResponse{
-		Logs:   logResponses,
-		Total:  len(logs),
+	return &dto.PaginatedResult[*entity.Log]{
+		Items:  logs,
+		Total:  *total,
 		Limit:  limit,
 		Offset: offset,
 	}, nil
 }
 
-func (s *LogService) CreateLog(ctx context.Context, req dto.LogCreateRequest) (*dto.LogResponse, error) {
+func (s *LogService) Create(ctx context.Context, req dto.LogCreateRequest, authorID *entity.ID) (*entity.Log, error) {
 	now := time.Now().UTC()
 
 	log := &entity.Log{
-		ID:          req.ID,
 		Title:       req.Title,
-		Topics:      req.Topics,
 		Generations: req.Generations,
 		Content:     req.Content,
 		CreatedAt:   now,
-		LoggedBy:    req.LoggedBy,
 	}
 
-	if log.Topics == nil {
-		log.Topics = []string{}
-	}
-	if log.Generations == nil {
-		log.Generations = []uint16{}
-	}
-	if log.LoggedBy == nil {
-		log.LoggedBy = []int64{}
+	authorIDs := make([]entity.ID, len(req.CoAuthorIDs)+1)
+	authorIDs = append(authorIDs, *authorID)
+	for _, c := range req.CoAuthorIDs {
+		authorIDs = append(authorIDs, c)
 	}
 
-	err := s.logRepository.Create(ctx, log)
+	log, err := s.logRepository.Create(ctx, log, &req.TopicIDs, &req.CoAuthorIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	return &dto.LogResponse{
-		ID:          log.ID,
-		Title:       log.Title,
-		Topics:      log.Topics,
-		Generations: log.Generations,
-		Content:     log.Content,
-		CreatedAt:   log.CreatedAt.Format(time.RFC3339),
-		LoggedBy:    log.LoggedBy,
-		Comments:    []dto.CommentResponse{},
-	}, nil
+	return log, nil
 }
 
-func (s *LogService) UpdateLog(ctx context.Context, id string, req dto.LogUpdateRequest) (*dto.LogResponse, error) {
+func (s *LogService) Update(ctx context.Context, id *entity.ID, req dto.LogUpdateRequest, authorID *entity.ID) (*entity.Log, error) {
 	log, err := s.logRepository.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -175,94 +104,36 @@ func (s *LogService) UpdateLog(ctx context.Context, id string, req dto.LogUpdate
 	if req.Title != nil {
 		log.Title = *req.Title
 	}
-	if req.Topics != nil {
-		log.Topics = *req.Topics
-	}
 	if req.Generations != nil {
 		log.Generations = *req.Generations
 	}
 	if req.Content != nil {
 		log.Content = *req.Content
 	}
-	if req.LoggedBy != nil {
-		log.LoggedBy = *req.LoggedBy
+
+	if req.CoAuthorIDs != nil {
+		authorIDs := make([]entity.ID, len(*req.CoAuthorIDs)+1)
+		authorIDs = append(authorIDs, *authorID)
+		for _, c := range *req.CoAuthorIDs {
+			authorIDs = append(authorIDs, c)
+		}
+		log, err = s.logRepository.Update(ctx, log, req.TopicIDs, &authorIDs)
+	} else {
+		log, err = s.logRepository.Update(ctx, log, req.TopicIDs, nil)
 	}
 
-	err = s.logRepository.Update(ctx, log)
 	if err != nil {
 		return nil, err
 	}
 
-	return &dto.LogResponse{
-		ID:          log.ID,
-		Title:       log.Title,
-		Topics:      log.Topics,
-		Generations: log.Generations,
-		Content:     log.Content,
-		CreatedAt:   log.CreatedAt.Format(time.RFC3339),
-		LoggedBy:    log.LoggedBy,
-	}, nil
+	return log, nil
 }
 
-func (s *LogService) DeleteLog(ctx context.Context, id string) error {
+func (s *LogService) Delete(ctx context.Context, id *entity.ID) error {
 	err := s.commentRepository.DeleteByLogID(ctx, id)
 	if err != nil {
 		return err
 	}
 
 	return s.logRepository.Delete(ctx, id)
-}
-
-func (s *LogService) CreateComment(ctx context.Context, logID string, req dto.CommentCreateRequest) (*dto.CommentResponse, error) {
-	_, err := s.logRepository.FindByID(ctx, logID)
-	if err != nil {
-		return nil, err
-	}
-
-	comment := &entity.Comment{
-		ID:        uuid.New().String(),
-		LogID:     logID,
-		Author:    req.Author,
-		Content:   req.Content,
-		CreatedAt: time.Now().UTC(),
-	}
-
-	err = s.commentRepository.Create(ctx, comment)
-	if err != nil {
-		return nil, err
-	}
-
-	return &dto.CommentResponse{
-		ID:        comment.ID,
-		LogID:     comment.LogID,
-		Author:    comment.Author,
-		Content:   comment.Content,
-		CreatedAt: comment.CreatedAt.Format(time.RFC3339),
-	}, nil
-}
-
-func (s *LogService) UpdateComment(ctx context.Context, commentID string, req dto.CommentUpdateRequest) (*dto.CommentResponse, error) {
-	comment, err := s.commentRepository.FindByID(ctx, commentID)
-	if err != nil {
-		return nil, err
-	}
-
-	comment.Content = req.Content
-
-	err = s.commentRepository.Update(ctx, comment)
-	if err != nil {
-		return nil, err
-	}
-
-	return &dto.CommentResponse{
-		ID:        comment.ID,
-		LogID:     comment.LogID,
-		Author:    comment.Author,
-		Content:   comment.Content,
-		CreatedAt: comment.CreatedAt.Format(time.RFC3339),
-	}, nil
-}
-
-func (s *LogService) DeleteComment(ctx context.Context, commentID string) error {
-	return s.commentRepository.Delete(ctx, commentID)
 }

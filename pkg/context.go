@@ -1,6 +1,9 @@
 package pkg
 
-import "context"
+import (
+	"analog-be/entity"
+	"context"
+)
 
 type contextKey string
 
@@ -9,8 +12,8 @@ const (
 	SessionTokenKey contextKey = "sessionToken"
 )
 
-func GetUserID(ctx context.Context) (int64, bool) {
-	userID, ok := ctx.Value(UserIDKey).(int64)
+func GetUserID(ctx context.Context) (entity.ID, bool) {
+	userID, ok := ctx.Value(UserIDKey).(entity.ID)
 	return userID, ok
 }
 

@@ -3,7 +3,7 @@ package entity
 import "time"
 
 type OAuthState struct {
-	ID           int64     `bun:"id,pk,autoincrement" json:"id"`
+	ID           ID        `bun:"id,pk,autoincrement" json:"id"`
 	State        string    `bun:"state,unique,notnull" json:"state"`
 	CodeVerifier string    `bun:"code_verifier,notnull" json:"codeVerifier"`
 	RedirectUri  string    `bun:"redirect_uri" json:"redirectUri"`
@@ -13,9 +13,9 @@ type OAuthState struct {
 }
 
 type Session struct {
-	ID           int64     `bun:"id,pk,autoincrement" json:"id"`
+	ID           ID        `bun:"id,pk,autoincrement" json:"id"`
 	SessionToken string    `bun:"session_token,unique,notnull" json:"sessionToken"`
-	UserID       int64     `bun:"user_id,notnull" json:"userId"`
+	UserID       ID        `bun:"user_id,notnull" json:"userId"`
 	ExpiresAt    time.Time `bun:"expires_at,notnull" json:"expiresAt"`
 	CreatedAt    time.Time `bun:"created_at,notnull,default:current_timestamp" json:"createdAt"`
 
