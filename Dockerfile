@@ -1,14 +1,13 @@
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
 COPY go.mod go.sum ./
-RUN go mod tidy
 RUN go mod download
 
-COPY entity .
+COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main ./api/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main main.go
 
 FROM alpine:latest
 
