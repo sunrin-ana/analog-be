@@ -9,14 +9,16 @@ import (
 )
 
 type LogService struct {
-	logRepository     *repository.LogRepository
-	commentRepository *repository.CommentRepository
+	logRepository      *repository.LogRepository
+	commentRepository  *repository.CommentRepository
+	anamericanoService *AnAmericanoService
 }
 
-func NewLogService(logRepository *repository.LogRepository, commentRepository *repository.CommentRepository) *LogService {
+func NewLogService(logRepository *repository.LogRepository, commentRepository *repository.CommentRepository, anamericanoService *AnAmericanoService) *LogService {
 	return &LogService{
-		logRepository:     logRepository,
-		commentRepository: commentRepository,
+		logRepository:      logRepository,
+		commentRepository:  commentRepository,
+		anamericanoService: anamericanoService,
 	}
 }
 
@@ -90,6 +92,18 @@ func (s *LogService) Create(ctx context.Context, req dto.LogCreateRequest, autho
 	log, err := s.logRepository.Create(ctx, log, &req.TopicIDs, &req.CoAuthorIDs)
 	if err != nil {
 		return nil, err
+	}
+
+	_, err = s.anamericanoService.Write(*authorID, "owner", "analog_log", log.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, id := range authorIDs[1:] {
+		_, err = s.anamericanoService.Write(id, "editor", "analog_log", log.ID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return log, nil

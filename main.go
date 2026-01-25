@@ -78,6 +78,7 @@ func main() {
 		service.NewAnAccountOAuthService,
 		service.NewCommentService,
 		service.NewTopicService,
+		service.NewAnAmericanoService,
 
 		// 컨트롤러
 		controller.NewHealthController,

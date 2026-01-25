@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"os"
 	"strconv"
 
 	"github.com/sunrin-ana/anamericano-golang"
@@ -18,11 +19,12 @@ func NewAnAmericanoService() *AnAmericanoService {
 }
 
 func (s *AnAmericanoService) Check(
-	token string,
 	userID int64,
 	relation string,
 	ns string,
 	targetId string) (bool, error) {
+
+	token := os.Getenv("AN_ACCOUNT_API_TOKEN")
 
 	ctx := anamericano.WithToken(context.Background(), token)
 
@@ -42,17 +44,18 @@ func (s *AnAmericanoService) Check(
 }
 
 func (s *AnAmericanoService) Write(
-	token string,
 	userID int64,
 	relation string,
 	ns string,
-	targetId string) (*anamericano.Permission, error) {
+	targetId int64) (*anamericano.Permission, error) {
 	// TODO: 맞나?
+	token := os.Getenv("AN_ACCOUNT_API_TOKEN")
+
 	ctx := anamericano.WithToken(context.Background(), token)
 
 	resp, err := s.client.WritePermission(ctx, &anamericano.PermissionWriteRequest{
 		ObjectNamespace: ns,
-		ObjectID:        targetId,
+		ObjectID:        strconv.FormatInt(targetId, 10),
 		Relation:        relation,
 		SubjectType:     "user",
 		SubjectID:       strconv.FormatInt(userID, 10),
