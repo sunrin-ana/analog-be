@@ -10,7 +10,7 @@ import (
 
 // 여기서 'log' 란 article을 의미합니다.
 func RegisterLogRoutes(app spine.App) {
-	app.Route("GET", "/logs", (*controller.LogController).GetList)
+	app.Route("GET", "/logs", (*controller.LogController).GetListOfLog)
 	app.Route("GET", "/logs/search", (*controller.LogController).SearchLogs)
 	app.Route("GET", "/logs/:id", (*controller.LogController).GetLog)
 

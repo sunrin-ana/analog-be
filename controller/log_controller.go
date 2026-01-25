@@ -23,7 +23,7 @@ func NewLogController(logService *service.LogService, commentService *service.Co
 	}
 }
 
-func (c *LogController) GetList(ctx context.Context, q query.Values) (dto.PaginatedResult[dto.LogResponse], error) {
+func (c *LogController) GetListOfLog(ctx context.Context, q query.Values) (dto.PaginatedResult[dto.LogResponse], error) {
 	limit, _ := strconv.Atoi(q.Get("limit"))
 	offset, _ := strconv.Atoi(q.Get("offset"))
 
