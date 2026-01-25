@@ -46,6 +46,21 @@ func (s *AnAmericanoService) Write(
 	userID int64,
 	relation string,
 	ns string,
-	targetId string) {
-	// TODO
+	targetId string) (*anamericano.Permission, error) {
+	// TODO: 맞나?
+	ctx := anamericano.WithToken(context.Background(), token)
+
+	resp, err := s.client.WritePermission(ctx, &anamericano.PermissionWriteRequest{
+		ObjectNamespace: ns,
+		ObjectID:        targetId,
+		Relation:        relation,
+		SubjectType:     "user",
+		SubjectID:       strconv.FormatInt(userID, 10),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
