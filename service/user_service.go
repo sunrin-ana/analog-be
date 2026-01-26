@@ -10,33 +10,25 @@ import (
 )
 
 type UserService struct {
-	repository repository.UserRepository
+	repository *repository.UserRepository
 }
 
-func NewUserService(repository repository.UserRepository) *UserService {
+func NewUserService(repository *repository.UserRepository) *UserService {
 	return &UserService{
 		repository: repository,
 	}
 }
 
-func (s *UserService) GetUser(ctx context.Context, id int64) (*dto.UserResponse, error) {
-	user, err := s.repository.FindByID(ctx, int(id))
+func (s *UserService) Get(ctx context.Context, id *entity.ID) (*entity.User, error) {
+	user, err := s.repository.FindByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)
 	}
 
-	return &dto.UserResponse{
-		ID:           user.ID,
-		Name:         user.Name,
-		ProfileImage: user.ProfileImage,
-		JoinedAt:     user.JoinedAt.Format(time.RFC3339),
-		PartOf:       user.PartOf,
-		Generation:   user.Generation,
-		Connections:  user.Connections,
-	}, nil
+	return user, nil
 }
 
-func (s *UserService) CreateUser(ctx context.Context, req dto.UserCreateRequest) (*dto.UserResponse, error) {
+func (s *UserService) Create(ctx context.Context, req dto.UserCreateRequest) (*entity.User, error) {
 	now := time.Now()
 
 	user := &entity.User{
@@ -53,24 +45,16 @@ func (s *UserService) CreateUser(ctx context.Context, req dto.UserCreateRequest)
 		user.Connections = []string{}
 	}
 
-	err := s.repository.Create(ctx, user)
+	user, err := s.repository.Create(ctx, user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	return &dto.UserResponse{
-		ID:           user.ID,
-		Name:         user.Name,
-		ProfileImage: user.ProfileImage,
-		JoinedAt:     user.JoinedAt.Format(time.RFC3339),
-		PartOf:       user.PartOf,
-		Generation:   user.Generation,
-		Connections:  user.Connections,
-	}, nil
+	return user, nil
 }
 
-func (s *UserService) UpdateUser(ctx context.Context, id int64, req dto.UserUpdateRequest) (*dto.UserResponse, error) {
-	user, err := s.repository.FindByID(ctx, int(id))
+func (s *UserService) Update(ctx context.Context, id *entity.ID, req dto.UserUpdateRequest) (*entity.User, error) {
+	user, err := s.repository.FindByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)
 	}
@@ -91,24 +75,16 @@ func (s *UserService) UpdateUser(ctx context.Context, id int64, req dto.UserUpda
 		user.Connections = *req.Connections
 	}
 
-	err = s.repository.Update(ctx, user)
+	user, err = s.repository.Update(ctx, user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update user: %w", err)
 	}
 
-	return &dto.UserResponse{
-		ID:           user.ID,
-		Name:         user.Name,
-		ProfileImage: user.ProfileImage,
-		JoinedAt:     user.JoinedAt.Format(time.RFC3339),
-		PartOf:       user.PartOf,
-		Generation:   user.Generation,
-		Connections:  user.Connections,
-	}, nil
+	return user, nil
 }
 
-func (s *UserService) DeleteUser(ctx context.Context, id int64) error {
-	_, err := s.repository.FindByID(ctx, int(id))
+func (s *UserService) Delete(ctx context.Context, id *entity.ID) error {
+	_, err := s.repository.FindByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("user not found: %w", err)
 	}
@@ -121,7 +97,7 @@ func (s *UserService) DeleteUser(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (s *UserService) ListUsers(ctx context.Context, limit, offset int) (*dto.UserListResponse, error) {
+func (s *UserService) List(ctx context.Context, limit, offset int) (*dto.PaginatedResult[*entity.User], error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -129,38 +105,20 @@ func (s *UserService) ListUsers(ctx context.Context, limit, offset int) (*dto.Us
 		offset = 0
 	}
 
-	users, err := s.repository.FindAll(ctx, limit, offset)
+	users, total, err := s.repository.FindAll(ctx, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list users: %w", err)
 	}
 
-	total, err := s.repository.Count(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to count users: %w", err)
-	}
-
-	userResponses := make([]*dto.UserResponse, len(users))
-	for i, user := range users {
-		userResponses[i] = &dto.UserResponse{
-			ID:           user.ID,
-			Name:         user.Name,
-			ProfileImage: user.ProfileImage,
-			JoinedAt:     user.JoinedAt.Format(time.RFC3339),
-			PartOf:       user.PartOf,
-			Generation:   user.Generation,
-			Connections:  user.Connections,
-		}
-	}
-
-	return &dto.UserListResponse{
-		Users:  userResponses,
-		Total:  total,
+	return &dto.PaginatedResult[*entity.User]{
+		Items:  users,
+		Total:  *total,
 		Limit:  limit,
 		Offset: offset,
 	}, nil
 }
 
-func (s *UserService) SearchUsers(ctx context.Context, query string, limit, offset int) (*dto.UserListResponse, error) {
+func (s *UserService) Search(ctx context.Context, query string, limit, offset int) (*dto.PaginatedResult[*entity.User], error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -168,29 +126,14 @@ func (s *UserService) SearchUsers(ctx context.Context, query string, limit, offs
 		offset = 0
 	}
 
-	users, err := s.repository.Search(ctx, query, limit, offset)
+	users, total, err := s.repository.Search(ctx, query, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search users: %w", err)
 	}
 
-	total := len(users)
-
-	userResponses := make([]*dto.UserResponse, len(users))
-	for i, user := range users {
-		userResponses[i] = &dto.UserResponse{
-			ID:           user.ID,
-			Name:         user.Name,
-			ProfileImage: user.ProfileImage,
-			JoinedAt:     user.JoinedAt.Format(time.RFC3339),
-			PartOf:       user.PartOf,
-			Generation:   user.Generation,
-			Connections:  user.Connections,
-		}
-	}
-
-	return &dto.UserListResponse{
-		Users:  userResponses,
-		Total:  total,
+	return &dto.PaginatedResult[*entity.User]{
+		Items:  users,
+		Total:  *total,
 		Limit:  limit,
 		Offset: offset,
 	}, nil

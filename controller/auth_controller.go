@@ -22,48 +22,67 @@ func NewAuthController(anAccountOAuthService *service.AnAccountService, userServ
 	}
 }
 
-func (c *AuthController) InitiateLogin(ctx context.Context, req dto.LoginInitRequest) (*dto.LoginInitResponse, error) {
+func (c *AuthController) InitiateLogin(ctx context.Context, req dto.LoginInitRequest) (dto.LoginInitResponse, error) {
 	if req.RedirectUri == "" {
-		return nil, fmt.Errorf("redirectUri is required")
+		return dto.LoginInitResponse{}, fmt.Errorf("redirectUri is required")
 	}
 
-	return c.anAccountOAuthService.InitiateLogin(ctx, req.RedirectUri)
+	result, err := c.anAccountOAuthService.InitiateLogin(ctx, req.RedirectUri)
+	if err != nil {
+		return dto.LoginInitResponse{}, err
+	}
+	return *result, nil
 }
 
-func (c *AuthController) InitiateSignup(ctx context.Context, req dto.SignupInitRequest) (*dto.SignupInitResponse, error) {
+func (c *AuthController) InitiateSignup(ctx context.Context, req dto.SignupInitRequest) (dto.SignupInitResponse, error) {
 	if req.RedirectUri == "" {
-		return nil, fmt.Errorf("redirectUri is required")
+		return dto.SignupInitResponse{}, fmt.Errorf("redirectUri is required")
 	}
 
-	return c.anAccountOAuthService.InitiateSignup(ctx, req.RedirectUri)
+	result, err := c.anAccountOAuthService.InitiateSignup(ctx, req.RedirectUri)
+	if err != nil {
+		return dto.SignupInitResponse{}, err
+	}
+
+	return *result, nil
 }
 
-func (c *AuthController) HandleLoginCallback(ctx context.Context, q query.Values) (*dto.AuthResponse, error) {
+func (c *AuthController) HandleLoginCallback(ctx context.Context, q query.Values) (dto.AuthResponse, error) {
 	code := q.Get("code")
 	state := q.Get("state")
 
 	if code == "" {
-		return nil, fmt.Errorf("code is required")
+		return dto.AuthResponse{}, fmt.Errorf("code is required")
 	}
 	if state == "" {
-		return nil, fmt.Errorf("state is required")
+		return dto.AuthResponse{}, fmt.Errorf("state is required")
 	}
 
-	return c.anAccountOAuthService.HandleCallback(ctx, code, state)
+	result, err := c.anAccountOAuthService.HandleCallback(ctx, code, state)
+	if err != nil {
+		return dto.AuthResponse{}, err
+	}
+
+	return *result, nil
 }
 
-func (c *AuthController) HandleSignupCallback(ctx context.Context, q query.Values) (*dto.AuthResponse, error) {
+func (c *AuthController) HandleSignupCallback(ctx context.Context, q query.Values) (dto.AuthResponse, error) {
 	code := q.Get("code")
 	state := q.Get("state")
 
 	if code == "" {
-		return nil, fmt.Errorf("code is required")
+		return dto.AuthResponse{}, fmt.Errorf("code is required")
 	}
 	if state == "" {
-		return nil, fmt.Errorf("state is required")
+		return dto.AuthResponse{}, fmt.Errorf("state is required")
 	}
 
-	return c.anAccountOAuthService.HandleCallback(ctx, code, state)
+	result, err := c.anAccountOAuthService.HandleCallback(ctx, code, state)
+	if err != nil {
+		return dto.AuthResponse{}, err
+	}
+
+	return *result, nil
 }
 
 func (c *AuthController) Logout(ctx context.Context, req dto.LogoutRequest) (interface{}, error) {
@@ -105,15 +124,15 @@ func (c *AuthController) GetCurrentUser(ctx context.Context, q query.Values) (*d
 	}, nil
 }
 
-func (c *AuthController) RefreshToken(ctx context.Context, req dto.TokenRefreshRequest) (*dto.TokenResponse, error) {
+func (c *AuthController) RefreshToken(ctx context.Context, req dto.TokenRefreshRequest) (dto.TokenResponse, error) {
 	if req.RefreshToken == "" {
-		return nil, fmt.Errorf("refresh_token is required")
+		return dto.TokenResponse{}, fmt.Errorf("refresh_token is required")
 	}
 
 	tokenResp, err := c.anAccountOAuthService.RefreshAccessToken(req.RefreshToken)
 	if err != nil {
-		return nil, fmt.Errorf("failed to refresh token: %w", err)
+		return dto.TokenResponse{}, fmt.Errorf("failed to refresh token: %w", err)
 	}
 
-	return tokenResp, nil
+	return *tokenResp, nil
 }

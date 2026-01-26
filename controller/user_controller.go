@@ -5,6 +5,7 @@ import (
 	"analog-be/service"
 	"context"
 	"fmt"
+	"github.com/NARUBROWN/spine/pkg/path"
 	"strconv"
 
 	"github.com/NARUBROWN/spine/pkg/query"
@@ -20,54 +21,45 @@ func NewUserController(userService *service.UserService) *UserController {
 	}
 }
 
-func (c *UserController) GetUser(ctx context.Context, q query.Values) (*dto.UserResponse, error) {
-	idStr := q.Get("id")
-	if idStr == "" {
-		return nil, fmt.Errorf("user id is required")
-	}
+func (c *UserController) Get(ctx context.Context, id path.Int) (dto.UserResponse, error) {
 
-	id, err := strconv.ParseInt(idStr, 10, 64)
+	user, err := c.userService.Get(ctx, &id.Value)
 	if err != nil {
-		return nil, fmt.Errorf("invalid user id: %w", err)
+		return dto.UserResponse{}, err
 	}
 
-	return c.userService.GetUser(ctx, id)
+	res := dto.NewUserResponse(user)
+	return res, nil
 }
 
-func (c *UserController) CreateUser(ctx context.Context, req dto.UserCreateRequest) (*dto.UserResponse, error) {
+func (c *UserController) Create(ctx context.Context, req dto.UserCreateRequest) (dto.UserResponse, error) {
 	if req.Name == "" {
-		return nil, fmt.Errorf("name is required")
+		return dto.UserResponse{}, fmt.Errorf("name is required")
 	}
 
-	return c.userService.CreateUser(ctx, req)
+	user, err := c.userService.Create(ctx, req)
+	if err != nil {
+		return dto.UserResponse{}, err
+	}
+
+	res := dto.NewUserResponse(user)
+	return res, nil
 }
 
-func (c *UserController) UpdateUser(ctx context.Context, q query.Values, req dto.UserUpdateRequest) (*dto.UserResponse, error) {
-	idStr := q.Get("id")
-	if idStr == "" {
-		return nil, fmt.Errorf("user id is required")
-	}
+func (c *UserController) Update(ctx context.Context, id path.Int, req dto.UserUpdateRequest) (dto.UserResponse, error) {
 
-	id, err := strconv.ParseInt(idStr, 10, 64)
+	user, err := c.userService.Update(ctx, &id.Value, req)
 	if err != nil {
-		return nil, fmt.Errorf("invalid user id: %w", err)
+		return dto.UserResponse{}, err
 	}
 
-	return c.userService.UpdateUser(ctx, id, req)
+	res := dto.NewUserResponse(user)
+	return res, nil
 }
 
-func (c *UserController) DeleteUser(ctx context.Context, q query.Values) (interface{}, error) {
-	idStr := q.Get("id")
-	if idStr == "" {
-		return nil, fmt.Errorf("user id is required")
-	}
+func (c *UserController) Delete(ctx context.Context, id path.Int) (interface{}, error) {
 
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user id: %w", err)
-	}
-
-	err = c.userService.DeleteUser(ctx, id)
+	err := c.userService.Delete(ctx, &id.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -75,10 +67,10 @@ func (c *UserController) DeleteUser(ctx context.Context, q query.Values) (interf
 	return map[string]string{"message": "user deleted successfully"}, nil
 }
 
-func (c *UserController) SearchUser(ctx context.Context, q query.Values) (*dto.UserListResponse, error) {
+func (c *UserController) Search(ctx context.Context, q query.Values) (dto.PaginatedResult[dto.UserResponse], error) {
 	searchQuery := q.Get("q")
 	if searchQuery == "" {
-		return nil, fmt.Errorf("search query is required")
+		return dto.PaginatedResult[dto.UserResponse]{}, fmt.Errorf("search query is required")
 	}
 
 	limit := 20
@@ -95,5 +87,20 @@ func (c *UserController) SearchUser(ctx context.Context, q query.Values) (*dto.U
 		}
 	}
 
-	return c.userService.SearchUsers(ctx, searchQuery, limit, offset)
+	paginatedResult, err := c.userService.Search(ctx, searchQuery, limit, offset)
+	if err != nil {
+		return dto.PaginatedResult[dto.UserResponse]{}, err
+	}
+
+	userResponses := make([]dto.UserResponse, len(paginatedResult.Items))
+	for i, user := range paginatedResult.Items {
+		userResponses[i] = dto.NewUserResponse(user)
+	}
+
+	return dto.PaginatedResult[dto.UserResponse]{
+		Items:  userResponses,
+		Total:  paginatedResult.Total,
+		Limit:  paginatedResult.Limit,
+		Offset: paginatedResult.Offset,
+	}, nil
 }

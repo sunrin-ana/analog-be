@@ -5,23 +5,25 @@ import (
 	"analog-be/pkg"
 	"analog-be/service"
 	"context"
-	"fmt"
+	"github.com/NARUBROWN/spine/pkg/path"
 	"strconv"
 
 	"github.com/NARUBROWN/spine/pkg/query"
 )
 
 type LogController struct {
-	svc *service.LogService
+	logService     *service.LogService
+	commentService *service.CommentService
 }
 
-func NewLogController(svc *service.LogService) *LogController {
+func NewLogController(logService *service.LogService, commentService *service.CommentService) *LogController {
 	return &LogController{
-		svc: svc,
+		logService:     logService,
+		commentService: commentService,
 	}
 }
 
-func (c *LogController) GetListOfLog(ctx context.Context, q query.Values) (*dto.LogListResponse, error) {
+func (c *LogController) GetListOfLog(ctx context.Context, q query.Values) (dto.PaginatedResult[dto.LogResponse], error) {
 	limit, _ := strconv.Atoi(q.Get("limit"))
 	offset, _ := strconv.Atoi(q.Get("offset"))
 
@@ -32,19 +34,35 @@ func (c *LogController) GetListOfLog(ctx context.Context, q query.Values) (*dto.
 		offset = 0
 	}
 
-	return c.svc.GetListOfLog(ctx, limit, offset)
-}
-
-func (c *LogController) GetLog(ctx context.Context, q query.Values) (*dto.LogResponse, error) {
-	id := q.Get("id")
-	if id == "" {
-		return nil, fmt.Errorf("log id is required")
+	paginatedResult, err := c.logService.GetList(ctx, limit, offset)
+	if err != nil {
+		return dto.PaginatedResult[dto.LogResponse]{}, err
 	}
 
-	return c.svc.GetLog(ctx, id)
+	logResponses := make([]dto.LogResponse, len(paginatedResult.Items))
+	for i, log := range paginatedResult.Items {
+		logResponses[i] = dto.NewLogResponse(log)
+	}
+
+	return dto.PaginatedResult[dto.LogResponse]{
+		Items:  logResponses,
+		Total:  paginatedResult.Total,
+		Limit:  paginatedResult.Limit,
+		Offset: paginatedResult.Offset,
+	}, nil
 }
 
-func (c *LogController) SearchLogs(ctx context.Context, q query.Values) (*dto.LogListResponse, error) {
+func (c *LogController) GetLog(ctx context.Context, id path.Int) (dto.LogResponse, error) {
+	log, err := c.logService.Get(ctx, &id.Value)
+	if err != nil {
+		return dto.LogResponse{}, err
+	}
+
+	res := dto.NewLogResponse(log)
+	return res, nil
+}
+
+func (c *LogController) SearchLogs(ctx context.Context, q query.Values) (dto.PaginatedResult[dto.LogResponse], error) {
 	searchQuery := q.Get("q")
 	limit, _ := strconv.Atoi(q.Get("limit"))
 	offset, _ := strconv.Atoi(q.Get("offset"))
@@ -56,67 +74,91 @@ func (c *LogController) SearchLogs(ctx context.Context, q query.Values) (*dto.Lo
 		offset = 0
 	}
 
-	return c.svc.SearchLogs(ctx, searchQuery, limit, offset)
+	paginatedResult, err := c.logService.Search(ctx, searchQuery, limit, offset)
+	if err != nil {
+		return dto.PaginatedResult[dto.LogResponse]{}, err
+	}
+
+	logResponses := make([]dto.LogResponse, len(paginatedResult.Items))
+	for i, log := range paginatedResult.Items {
+		logResponses[i] = dto.NewLogResponse(log)
+	}
+
+	return dto.PaginatedResult[dto.LogResponse]{
+		Items:  logResponses,
+		Total:  paginatedResult.Total,
+		Limit:  paginatedResult.Limit,
+		Offset: paginatedResult.Offset,
+	}, nil
 }
 
-func (c *LogController) CreateLog(ctx context.Context, req dto.LogCreateRequest) (*dto.LogResponse, error) {
+func (c *LogController) CreateLog(ctx context.Context, req dto.LogCreateRequest) (dto.LogResponse, error) {
 	if err := pkg.Validate(&req); err != nil {
-		return nil, err
+		return dto.LogResponse{}, err
 	}
 
-	return c.svc.CreateLog(ctx, req)
+	authorID, ok := pkg.GetUserID(ctx)
+	if !ok {
+		return dto.LogResponse{}, pkg.NewUnauthorizedError("Authentication required")
+	}
+
+	log, err := c.logService.Create(ctx, req, &authorID)
+	if err != nil {
+		return dto.LogResponse{}, err
+	}
+
+	res := dto.NewLogResponse(log)
+	return res, nil
 }
 
-func (c *LogController) UpdateLog(ctx context.Context, q query.Values, req dto.LogUpdateRequest) (*dto.LogResponse, error) {
-	id := q.Get("id")
-	if id == "" {
-		return nil, fmt.Errorf("log id is required")
-	}
+func (c *LogController) UpdateLog(ctx context.Context, id path.Int, req dto.LogUpdateRequest) (dto.LogResponse, error) {
 
 	userID, ok := pkg.GetUserID(ctx)
 	if !ok {
-		return nil, pkg.NewUnauthorizedError("Authentication required")
+		return dto.LogResponse{}, pkg.NewUnauthorizedError("Authentication required")
 	}
 
-	log, err := c.svc.GetLog(ctx, id)
+	log, err := c.logService.Get(ctx, &id.Value)
 	if err != nil {
-		return nil, err
+		return dto.LogResponse{}, err
 	}
 
 	hasPermission := false
-	for _, authorID := range log.LoggedBy {
-		if authorID == userID {
+	for _, author := range log.LoggedBy {
+		if author.ID == userID {
 			hasPermission = true
 			break
 		}
 	}
 
 	if !hasPermission {
-		return nil, pkg.NewForbiddenError("You don't have permission to update this log")
+		return dto.LogResponse{}, pkg.NewForbiddenError("You don't have permission to update this log")
 	}
 
-	return c.svc.UpdateLog(ctx, id, req)
+	updatedLog, err := c.logService.Update(ctx, &id.Value, req, &userID)
+	if err != nil {
+		return dto.LogResponse{}, err
+	}
+
+	res := dto.NewLogResponse(updatedLog)
+	return res, nil
 }
 
-func (c *LogController) DeleteLog(ctx context.Context, q query.Values) (interface{}, error) {
-	id := q.Get("id")
-	if id == "" {
-		return nil, fmt.Errorf("log id is required")
-	}
+func (c *LogController) DeleteLog(ctx context.Context, id path.Int) (interface{}, error) {
 
 	userID, ok := pkg.GetUserID(ctx)
 	if !ok {
 		return nil, pkg.NewUnauthorizedError("Authentication required")
 	}
 
-	log, err := c.svc.GetLog(ctx, id)
+	log, err := c.logService.Get(ctx, &id.Value)
 	if err != nil {
 		return nil, err
 	}
 
 	hasPermission := false
-	for _, authorID := range log.LoggedBy {
-		if authorID == userID {
+	for _, author := range log.LoggedBy {
+		if author.ID == userID {
 			hasPermission = true
 			break
 		}
@@ -126,7 +168,7 @@ func (c *LogController) DeleteLog(ctx context.Context, q query.Values) (interfac
 		return nil, pkg.NewForbiddenError("You don't have permission to delete this log")
 	}
 
-	err = c.svc.DeleteLog(ctx, id)
+	err = c.logService.Delete(ctx, &id.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -134,42 +176,80 @@ func (c *LogController) DeleteLog(ctx context.Context, q query.Values) (interfac
 	return map[string]string{"message": "log deleted successfully"}, nil
 }
 
-func (c *LogController) CreateComment(ctx context.Context, q query.Values, req dto.CommentCreateRequest) (*dto.CommentResponse, error) {
-	logID := q.Get("id")
-	if logID == "" {
-		return nil, fmt.Errorf("log id is required")
-	}
+func (c *LogController) CreateComment(ctx context.Context, id path.Int, req dto.CommentCreateRequest) (dto.CommentResponse, error) {
 
 	if err := pkg.Validate(&req); err != nil {
-		return nil, err
+		return dto.CommentResponse{}, err
 	}
 
-	return c.svc.CreateComment(ctx, logID, req)
+	authorID, ok := pkg.GetUserID(ctx)
+	if !ok {
+		return dto.CommentResponse{}, pkg.NewUnauthorizedError("Authentication required")
+	}
+
+	comment, err := c.commentService.Create(ctx, req, &id.Value, &authorID)
+	if err != nil {
+		return dto.CommentResponse{}, err
+	}
+
+	res := dto.NewCommentResponse(comment)
+	return res, nil
 }
 
-func (c *LogController) UpdateComment(ctx context.Context, q query.Values, req dto.CommentUpdateRequest) (*dto.CommentResponse, error) {
-	commentID := q.Get("commentId")
-	if commentID == "" {
-		return nil, fmt.Errorf("comment id is required")
-	}
+func (c *LogController) UpdateComment(ctx context.Context, id path.Int, req dto.CommentUpdateRequest) (dto.CommentResponse, error) {
 
 	if err := pkg.Validate(&req); err != nil {
-		return nil, err
+		return dto.CommentResponse{}, err
 	}
 
-	return c.svc.UpdateComment(ctx, commentID, req)
+	comment, err := c.commentService.Update(ctx, &id.Value, req)
+	if err != nil {
+		return dto.CommentResponse{}, err
+	}
+
+	res := dto.NewCommentResponse(comment)
+	return res, nil
 }
 
-func (c *LogController) DeleteComment(ctx context.Context, q query.Values) (interface{}, error) {
-	commentID := q.Get("commentId")
-	if commentID == "" {
-		return nil, fmt.Errorf("comment id is required")
-	}
+func (c *LogController) DeleteComment(ctx context.Context, id path.Int) (interface{}, error) {
 
-	err := c.svc.DeleteComment(ctx, commentID)
+	err := c.commentService.Delete(ctx, &id.Value)
 	if err != nil {
 		return nil, err
 	}
 
 	return map[string]string{"message": "comment deleted successfully"}, nil
+}
+
+func (c *LogController) FindAllCommentByLogID(ctx context.Context, q query.Values, id path.Int) (dto.PaginatedResult[dto.CommentResponse], error) {
+	limit := 20
+	if limitStr := q.Get("limit"); limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
+			limit = parsedLimit
+		}
+	}
+
+	offset := 0
+	if offsetStr := q.Get("offset"); offsetStr != "" {
+		if parsedOffset, err := strconv.Atoi(offsetStr); err == nil && parsedOffset >= 0 {
+			offset = parsedOffset
+		}
+	}
+
+	result, err := c.commentService.FindByLogID(ctx, &id.Value, limit, offset)
+	if err != nil {
+		return dto.PaginatedResult[dto.CommentResponse]{}, err
+	}
+
+	commentResponses := make([]dto.CommentResponse, len(result.Items))
+	for i, item := range result.Items {
+		commentResponses[i] = dto.NewCommentResponse(item)
+	}
+
+	return dto.PaginatedResult[dto.CommentResponse]{
+		Items:  commentResponses,
+		Total:  result.Total,
+		Limit:  limit,
+		Offset: offset,
+	}, nil
 }
