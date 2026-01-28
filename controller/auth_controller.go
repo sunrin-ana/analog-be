@@ -157,7 +157,7 @@ func (c *AuthController) Logout(ctx context.Context, req *dto.LogoutRequest) err
 	return nil
 }
 
-func (c *AuthController) GetCurrentUser(ctx context.Context, q query.Values) httpx.Response[dto.UserDTO] {
+func (c *AuthController) GetCurrentUser(ctx context.Context) httpx.Response[dto.UserDTO] {
 	sessionToken, ok := pkg.GetSessionToken(ctx)
 	if !ok || sessionToken == "" {
 		return httpx.Response[dto.UserDTO]{

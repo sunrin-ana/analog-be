@@ -24,7 +24,7 @@ func NewLogController(logService *service.LogService, commentService *service.Co
 	}
 }
 
-func (c *LogController) GetListOfLog(ctx context.Context, q query.Values, page query.Pagination) httpx.Response[dto.PaginatedResult[dto.LogResponse]] {
+func (c *LogController) GetListOfLog(ctx context.Context, page query.Pagination) httpx.Response[dto.PaginatedResult[dto.LogResponse]] {
 	paginatedResult, err := c.logService.GetList(ctx, page.Size, page.Page)
 	if err != nil {
 		return httpx.Response[dto.PaginatedResult[dto.LogResponse]]{

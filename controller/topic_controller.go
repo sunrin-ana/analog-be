@@ -17,7 +17,7 @@ func NewTopicController(topicService *service.TopicService) *TopicController {
 	return &TopicController{topicService: topicService}
 }
 
-func (c *TopicController) GetList(ctx context.Context, q query.Values, page query.Pagination) httpx.Response[[]dto.TopicResponse] {
+func (c *TopicController) GetList(ctx context.Context, page query.Pagination) httpx.Response[[]dto.TopicResponse] {
 
 	topics, err := c.topicService.FindAll(ctx, page.Size, page.Page)
 	if err != nil {
