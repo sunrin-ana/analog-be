@@ -11,6 +11,7 @@ import (
 	"context"
 	"crypto/tls"
 	"database/sql"
+	"github.com/NARUBROWN/spine/pkg/boot"
 	"github.com/joho/godotenv"
 	"os"
 	"os/signal"
@@ -131,7 +132,13 @@ func main() {
 	}
 
 	logger.Info("Server starting", zap.String("port", port))
-	app.Run(":" + port)
+	app.Run(boot.Options{
+		Address:                ":" + port,
+		EnableGracefulShutdown: true,
+		HTTP: &boot.HTTPOptions{
+			GlobalPrefix: "/api",
+		},
+	})
 }
 
 func newBunDB() *bun.DB {

@@ -9,9 +9,8 @@ import (
 )
 
 func RegisterUserRoutes(app spine.App) {
-	app.Route("GET", "/users/search", (*controller.UserController).Search)
+	app.Route("GET", "/users/search/list", (*controller.UserController).Search)
 	app.Route("GET", "/users/:id", (*controller.UserController).Get, route.WithInterceptors(&interceptor.AuthInterceptor{}))
-	app.Route("GET", "/users/me", (*controller.UserController).GetMe, route.WithInterceptors(&interceptor.AuthInterceptor{}))
 
 	app.Route("POST", "/users", (*controller.UserController).Create)
 	app.Route("PUT", "/users", (*controller.UserController).Update, route.WithInterceptors(&interceptor.AuthInterceptor{}))
