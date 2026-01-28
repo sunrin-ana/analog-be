@@ -1,5 +1,7 @@
 package dto
 
+import "analog-be/entity"
+
 type LoginInitRequest struct {
 	RedirectUri string `json:"redirectUri" binding:"required"`
 }
@@ -34,12 +36,12 @@ type AuthResponse struct {
 }
 
 type UserDTO struct {
-	ID           int64    `json:"id"`
-	Name         string   `json:"name"`
-	ProfileImage string   `json:"profileImage"`
-	PartOf       string   `json:"partOf"`
-	Generation   uint16   `json:"generation"`
-	Connections  []string `json:"connections"`
+	ID           entity.ID `json:"id"`
+	Name         string    `json:"name"`
+	ProfileImage string    `json:"profileImage"`
+	PartOf       string    `json:"partOf"`
+	Generation   uint16    `json:"generation"`
+	Connections  []string  `json:"connections"`
 }
 
 type LogoutRequest struct {

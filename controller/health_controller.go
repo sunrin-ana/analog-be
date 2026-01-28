@@ -26,14 +26,14 @@ type HealthResponse struct {
 	Services  map[string]string `json:"services"`
 }
 
-func (c *HealthController) Health(ctx context.Context) (*HealthResponse, error) {
-	return &HealthResponse{
+func (c *HealthController) Health(ctx context.Context) (HealthResponse, error) {
+	return HealthResponse{
 		Status:    "healthy",
 		Timestamp: time.Now().Format(time.RFC3339),
 	}, nil
 }
 
-func (c *HealthController) Ready(ctx context.Context) (*HealthResponse, error) {
+func (c *HealthController) Ready(ctx context.Context) (HealthResponse, error) {
 	services := make(map[string]string)
 
 	dbCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
@@ -44,7 +44,7 @@ func (c *HealthController) Ready(ctx context.Context) (*HealthResponse, error) {
 	if err != nil {
 		c.logger.Error("Database health check failed", zap.Error(err))
 		services["database"] = "unhealthy"
-		return &HealthResponse{
+		return HealthResponse{
 			Status:    "degraded",
 			Timestamp: time.Now().Format(time.RFC3339),
 			Services:  services,
@@ -52,15 +52,15 @@ func (c *HealthController) Ready(ctx context.Context) (*HealthResponse, error) {
 	}
 	services["database"] = "healthy"
 
-	return &HealthResponse{
+	return HealthResponse{
 		Status:    "healthy",
 		Timestamp: time.Now().Format(time.RFC3339),
 		Services:  services,
 	}, nil
 }
 
-func (c *HealthController) Live(ctx context.Context) (*HealthResponse, error) {
-	return &HealthResponse{
+func (c *HealthController) Live(ctx context.Context) (HealthResponse, error) {
+	return HealthResponse{
 		Status:    "alive",
 		Timestamp: time.Now().Format(time.RFC3339),
 	}, nil

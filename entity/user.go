@@ -1,9 +1,11 @@
 package entity
 
-import "time"
+import (
+	"time"
+)
 
 type User struct {
-	ID           int64     `bun:"id,pk"` // An-Account와 아이디를 공유합니다
+	ID           ID        `bun:"id,pk"` // An-Account와 아이디를 공유합니다
 	Name         string    `bun:"name"`
 	ProfileImage string    `bun:"profile_image"`
 	JoinedAt     time.Time `bun:"joined_at"`
