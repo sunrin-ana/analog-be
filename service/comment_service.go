@@ -16,7 +16,7 @@ func NewCommentService(commentRepository *repository.CommentRepository, logRepos
 	return &CommentService{commentRepository: commentRepository, logRepository: logRepository}
 }
 
-func (s *CommentService) Create(ctx context.Context, req dto.CommentCreateRequest, logID *entity.ID, authorID *entity.ID) (*entity.Comment, error) {
+func (s *CommentService) Create(ctx context.Context, req *dto.CommentCreateRequest, logID *entity.ID, authorID *entity.ID) (*entity.Comment, error) {
 	_, err := s.logRepository.FindByID(ctx, logID)
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func (s *CommentService) Create(ctx context.Context, req dto.CommentCreateReques
 	return comment, nil
 }
 
-func (s *CommentService) Update(ctx context.Context, commentID *entity.ID, req dto.CommentUpdateRequest) (*entity.Comment, error) {
+func (s *CommentService) Update(ctx context.Context, commentID *entity.ID, req *dto.CommentUpdateRequest) (*entity.Comment, error) {
 	comment, err := s.commentRepository.FindByID(ctx, commentID)
 	if err != nil {
 		return nil, err
@@ -73,4 +73,13 @@ func (s *CommentService) FindByLogID(ctx context.Context, logID *entity.ID, limi
 		Limit:  limit,
 		Offset: offset,
 	}, nil
+}
+
+func (s *CommentService) GetById(ctx context.Context, commentID *entity.ID) (*entity.Comment, error) {
+	comment, err := s.commentRepository.FindByID(ctx, commentID)
+	if err != nil {
+		return nil, err
+	}
+
+	return comment, nil
 }

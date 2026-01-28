@@ -2,13 +2,16 @@ package controller
 
 import (
 	"analog-be/dto"
+	"analog-be/entity"
+	"analog-be/pkg"
 	"analog-be/service"
 	"context"
-	"fmt"
+	"github.com/NARUBROWN/spine/pkg/httperr"
+	"github.com/NARUBROWN/spine/pkg/httpx"
 	"github.com/NARUBROWN/spine/pkg/path"
-	"strconv"
-
 	"github.com/NARUBROWN/spine/pkg/query"
+	"github.com/NARUBROWN/spine/pkg/spine"
+	"net/http"
 )
 
 type UserController struct {
@@ -21,75 +24,119 @@ func NewUserController(userService *service.UserService) *UserController {
 	}
 }
 
-func (c *UserController) Get(ctx context.Context, id path.Int) (dto.UserResponse, error) {
-
+func (c *UserController) Get(ctx context.Context, id path.Int) httpx.Response[dto.UserResponse] {
 	user, err := c.userService.Get(ctx, &id.Value)
 	if err != nil {
-		return dto.UserResponse{}, err
+		// TODO: err 처리 로직 개선 필요(404 or 500), 다른 controller 도 동일
+		return httpx.Response[dto.UserResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusNotFound, // user not found
+			},
+		}
 	}
 
 	res := dto.NewUserResponse(user)
-	return res, nil
+	return httpx.Response[dto.UserResponse]{
+		Body: res,
+	}
 }
 
-func (c *UserController) Create(ctx context.Context, req dto.UserCreateRequest) (dto.UserResponse, error) {
+func (c *UserController) Create(ctx context.Context, req *dto.UserCreateRequest) httpx.Response[dto.UserResponse] {
 	if req.Name == "" {
-		return dto.UserResponse{}, fmt.Errorf("name is required")
+		return httpx.Response[dto.UserResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusBadRequest, // name is required
+			},
+		}
 	}
 
 	user, err := c.userService.Create(ctx, req)
 	if err != nil {
-		return dto.UserResponse{}, err
+		return httpx.Response[dto.UserResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusInternalServerError, // internal server error
+			},
+		}
 	}
 
 	res := dto.NewUserResponse(user)
-	return res, nil
+	return httpx.Response[dto.UserResponse]{
+		Body: res,
+		Options: httpx.ResponseOptions{
+			Status: http.StatusCreated,
+		},
+	}
 }
 
-func (c *UserController) Update(ctx context.Context, id path.Int, req dto.UserUpdateRequest) (dto.UserResponse, error) {
+func (c *UserController) Update(ctx context.Context, req *dto.UserUpdateRequest, spineCtx spine.Ctx) httpx.Response[dto.UserResponse] {
+	v, ok := spineCtx.Get(string(pkg.UserIDKey))
+	if !ok {
+		return httpx.Response[dto.UserResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusUnauthorized,
+			},
+		}
+	}
 
-	user, err := c.userService.Update(ctx, &id.Value, req)
+	id := v.(entity.ID)
+
+	user, err := c.userService.Update(ctx, &id, req)
 	if err != nil {
-		return dto.UserResponse{}, err
+		return httpx.Response[dto.UserResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusInternalServerError, // internal server error
+			},
+		}
 	}
 
 	res := dto.NewUserResponse(user)
-	return res, nil
+	return httpx.Response[dto.UserResponse]{
+		Body: res,
+	}
 }
 
-func (c *UserController) Delete(ctx context.Context, id path.Int) (interface{}, error) {
+func (c *UserController) Delete(ctx context.Context, spineCtx spine.Ctx) error {
 
-	err := c.userService.Delete(ctx, &id.Value)
-	if err != nil {
-		return nil, err
+	v, ok := spineCtx.Get(string(pkg.UserIDKey))
+	if !ok {
+		return &httperr.HTTPError{
+			Status:  401,
+			Message: "Authentication required",
+			Cause:   nil,
+		}
 	}
 
-	return map[string]string{"message": "user deleted successfully"}, nil
+	id := v.(entity.ID)
+
+	err := c.userService.Delete(ctx, &id)
+	if err != nil {
+		return &httperr.HTTPError{
+			Status:  500,
+			Message: "Internal Server Error",
+			Cause:   err,
+		}
+	}
+
+	return nil
 }
 
-func (c *UserController) Search(ctx context.Context, q query.Values) (dto.PaginatedResult[dto.UserResponse], error) {
+func (c *UserController) Search(ctx context.Context, q query.Values, page query.Pagination) httpx.Response[dto.PaginatedResult[dto.UserResponse]] {
 	searchQuery := q.Get("q")
 	if searchQuery == "" {
-		return dto.PaginatedResult[dto.UserResponse]{}, fmt.Errorf("search query is required")
-	}
-
-	limit := 20
-	if limitStr := q.Get("limit"); limitStr != "" {
-		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
-			limit = parsedLimit
+		return httpx.Response[dto.PaginatedResult[dto.UserResponse]]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusBadRequest, // search query is required
+			},
 		}
 	}
 
-	offset := 0
-	if offsetStr := q.Get("offset"); offsetStr != "" {
-		if parsedOffset, err := strconv.Atoi(offsetStr); err == nil && parsedOffset >= 0 {
-			offset = parsedOffset
-		}
-	}
-
-	paginatedResult, err := c.userService.Search(ctx, searchQuery, limit, offset)
+	paginatedResult, err := c.userService.Search(ctx, searchQuery, page.Size, page.Page)
 	if err != nil {
-		return dto.PaginatedResult[dto.UserResponse]{}, err
+		return httpx.Response[dto.PaginatedResult[dto.UserResponse]]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusInternalServerError, // internal server error
+			},
+		}
 	}
 
 	userResponses := make([]dto.UserResponse, len(paginatedResult.Items))
@@ -97,10 +144,39 @@ func (c *UserController) Search(ctx context.Context, q query.Values) (dto.Pagina
 		userResponses[i] = dto.NewUserResponse(user)
 	}
 
-	return dto.PaginatedResult[dto.UserResponse]{
-		Items:  userResponses,
-		Total:  paginatedResult.Total,
-		Limit:  paginatedResult.Limit,
-		Offset: paginatedResult.Offset,
-	}, nil
+	return httpx.Response[dto.PaginatedResult[dto.UserResponse]]{
+		Body: dto.PaginatedResult[dto.UserResponse]{
+			Items:  userResponses,
+			Total:  paginatedResult.Total,
+			Limit:  paginatedResult.Limit,
+			Offset: paginatedResult.Offset,
+		},
+	}
+}
+
+func (c *UserController) GetMe(ctx context.Context, spineCtx spine.Ctx) httpx.Response[dto.UserResponse] {
+	v, ok := spineCtx.Get(string(pkg.UserIDKey))
+	if !ok {
+		return httpx.Response[dto.UserResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusUnauthorized,
+			},
+		}
+	}
+
+	id := v.(entity.ID)
+
+	user, err := c.userService.Get(ctx, &id)
+	if err != nil {
+		return httpx.Response[dto.UserResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusInternalServerError, // internal server error
+			},
+		}
+	}
+
+	res := dto.NewUserResponse(user)
+	return httpx.Response[dto.UserResponse]{
+		Body: res,
+	}
 }

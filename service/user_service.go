@@ -28,7 +28,7 @@ func (s *UserService) Get(ctx context.Context, id *entity.ID) (*entity.User, err
 	return user, nil
 }
 
-func (s *UserService) Create(ctx context.Context, req dto.UserCreateRequest) (*entity.User, error) {
+func (s *UserService) Create(ctx context.Context, req *dto.UserCreateRequest) (*entity.User, error) {
 	now := time.Now()
 
 	user := &entity.User{
@@ -53,7 +53,7 @@ func (s *UserService) Create(ctx context.Context, req dto.UserCreateRequest) (*e
 	return user, nil
 }
 
-func (s *UserService) Update(ctx context.Context, id *entity.ID, req dto.UserUpdateRequest) (*entity.User, error) {
+func (s *UserService) Update(ctx context.Context, id *entity.ID, req *dto.UserUpdateRequest) (*entity.User, error) {
 	user, err := s.repository.FindByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)

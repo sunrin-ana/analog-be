@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"github.com/NARUBROWN/spine/pkg/httpx"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -26,14 +27,16 @@ type HealthResponse struct {
 	Services  map[string]string `json:"services"`
 }
 
-func (c *HealthController) Health(ctx context.Context) (HealthResponse, error) {
-	return HealthResponse{
-		Status:    "healthy",
-		Timestamp: time.Now().Format(time.RFC3339),
-	}, nil
+func (c *HealthController) Health(ctx context.Context) httpx.Response[HealthResponse] {
+	return httpx.Response[HealthResponse]{
+		Body: HealthResponse{
+			Status:    "healthy",
+			Timestamp: time.Now().Format(time.RFC3339),
+		},
+	}
 }
 
-func (c *HealthController) Ready(ctx context.Context) (HealthResponse, error) {
+func (c *HealthController) Ready(ctx context.Context) httpx.Response[HealthResponse] {
 	services := make(map[string]string)
 
 	dbCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
@@ -44,24 +47,31 @@ func (c *HealthController) Ready(ctx context.Context) (HealthResponse, error) {
 	if err != nil {
 		c.logger.Error("Database health check failed", zap.Error(err))
 		services["database"] = "unhealthy"
-		return HealthResponse{
-			Status:    "degraded",
-			Timestamp: time.Now().Format(time.RFC3339),
-			Services:  services,
-		}, nil
+
+		return httpx.Response[HealthResponse]{
+			Body: HealthResponse{
+				Status:    "degraded",
+				Timestamp: time.Now().Format(time.RFC3339),
+				Services:  services,
+			},
+		}
 	}
 	services["database"] = "healthy"
 
-	return HealthResponse{
-		Status:    "healthy",
-		Timestamp: time.Now().Format(time.RFC3339),
-		Services:  services,
-	}, nil
+	return httpx.Response[HealthResponse]{
+		Body: HealthResponse{
+			Status:    "healthy",
+			Timestamp: time.Now().Format(time.RFC3339),
+			Services:  services,
+		},
+	}
 }
 
-func (c *HealthController) Live(ctx context.Context) (HealthResponse, error) {
-	return HealthResponse{
-		Status:    "alive",
-		Timestamp: time.Now().Format(time.RFC3339),
-	}, nil
+func (c *HealthController) Live(ctx context.Context) httpx.Response[HealthResponse] {
+	return httpx.Response[HealthResponse]{
+		Body: HealthResponse{
+			Status:    "alive",
+			Timestamp: time.Now().Format(time.RFC3339),
+		},
+	}
 }

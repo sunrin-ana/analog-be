@@ -18,6 +18,7 @@ func RegisterLogRoutes(app spine.App) {
 	app.Route("PUT", "/logs/:id", (*controller.LogController).UpdateLog, route.WithInterceptors(&interceptor.AuthInterceptor{}))
 	app.Route("DELETE", "/logs/:id", (*controller.LogController).DeleteLog, route.WithInterceptors(&interceptor.AuthInterceptor{}))
 
+	app.Route("GET", "/logs/:id/", (*controller.LogController).FindAllCommentByLogID)
 	app.Route("POST", "/logs/:id/comments", (*controller.LogController).CreateComment, route.WithInterceptors(&interceptor.AuthInterceptor{}))
 	app.Route("PUT", "/logs/:id/comments/:commentId", (*controller.LogController).UpdateComment, route.WithInterceptors(&interceptor.AuthInterceptor{}))
 	app.Route("DELETE", "/logs/:id/comments/:commentId", (*controller.LogController).DeleteComment, route.WithInterceptors(&interceptor.AuthInterceptor{}))
