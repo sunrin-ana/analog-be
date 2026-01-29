@@ -5,10 +5,11 @@ import (
 	"analog-be/pkg"
 	"analog-be/service"
 	"context"
+	"github.com/NARUBROWN/spine/pkg/httperr"
+	"github.com/NARUBROWN/spine/pkg/httpx"
 	"github.com/NARUBROWN/spine/pkg/path"
-	"strconv"
-
 	"github.com/NARUBROWN/spine/pkg/query"
+	"net/http"
 )
 
 type LogController struct {
@@ -23,20 +24,14 @@ func NewLogController(logService *service.LogService, commentService *service.Co
 	}
 }
 
-func (c *LogController) GetListOfLog(ctx context.Context, q query.Values) (dto.PaginatedResult[dto.LogResponse], error) {
-	limit, _ := strconv.Atoi(q.Get("limit"))
-	offset, _ := strconv.Atoi(q.Get("offset"))
-
-	if limit <= 0 || limit > 100 {
-		limit = 20
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	paginatedResult, err := c.logService.GetList(ctx, limit, offset)
+func (c *LogController) GetListOfLog(ctx context.Context, page query.Pagination) httpx.Response[dto.PaginatedResult[dto.LogResponse]] {
+	paginatedResult, err := c.logService.GetList(ctx, page.Size, page.Page)
 	if err != nil {
-		return dto.PaginatedResult[dto.LogResponse]{}, err
+		return httpx.Response[dto.PaginatedResult[dto.LogResponse]]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusInternalServerError, // internal server error
+			},
+		}
 	}
 
 	logResponses := make([]dto.LogResponse, len(paginatedResult.Items))
@@ -44,39 +39,42 @@ func (c *LogController) GetListOfLog(ctx context.Context, q query.Values) (dto.P
 		logResponses[i] = dto.NewLogResponse(log)
 	}
 
-	return dto.PaginatedResult[dto.LogResponse]{
-		Items:  logResponses,
-		Total:  paginatedResult.Total,
-		Limit:  paginatedResult.Limit,
-		Offset: paginatedResult.Offset,
-	}, nil
+	return httpx.Response[dto.PaginatedResult[dto.LogResponse]]{
+		Body: dto.PaginatedResult[dto.LogResponse]{
+			Items:  logResponses,
+			Total:  paginatedResult.Total,
+			Limit:  paginatedResult.Limit,
+			Offset: paginatedResult.Offset,
+		},
+	}
 }
 
-func (c *LogController) GetLog(ctx context.Context, id path.Int) (dto.LogResponse, error) {
+func (c *LogController) GetLog(ctx context.Context, id path.Int) httpx.Response[dto.LogResponse] {
 	log, err := c.logService.Get(ctx, &id.Value)
 	if err != nil {
-		return dto.LogResponse{}, err
+		return httpx.Response[dto.LogResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusInternalServerError, // internal server error
+			},
+		}
 	}
 
 	res := dto.NewLogResponse(log)
-	return res, nil
+	return httpx.Response[dto.LogResponse]{
+		Body: res,
+	}
 }
 
-func (c *LogController) SearchLogs(ctx context.Context, q query.Values) (dto.PaginatedResult[dto.LogResponse], error) {
+func (c *LogController) SearchLogs(ctx context.Context, q query.Values, page query.Pagination) httpx.Response[dto.PaginatedResult[dto.LogResponse]] {
 	searchQuery := q.Get("q")
-	limit, _ := strconv.Atoi(q.Get("limit"))
-	offset, _ := strconv.Atoi(q.Get("offset"))
 
-	if limit <= 0 || limit > 100 {
-		limit = 20
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	paginatedResult, err := c.logService.Search(ctx, searchQuery, limit, offset)
+	paginatedResult, err := c.logService.Search(ctx, searchQuery, page.Size, page.Page)
 	if err != nil {
-		return dto.PaginatedResult[dto.LogResponse]{}, err
+		return httpx.Response[dto.PaginatedResult[dto.LogResponse]]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusInternalServerError, // internal server error
+			},
+		}
 	}
 
 	logResponses := make([]dto.LogResponse, len(paginatedResult.Items))
@@ -84,43 +82,67 @@ func (c *LogController) SearchLogs(ctx context.Context, q query.Values) (dto.Pag
 		logResponses[i] = dto.NewLogResponse(log)
 	}
 
-	return dto.PaginatedResult[dto.LogResponse]{
-		Items:  logResponses,
-		Total:  paginatedResult.Total,
-		Limit:  paginatedResult.Limit,
-		Offset: paginatedResult.Offset,
-	}, nil
+	return httpx.Response[dto.PaginatedResult[dto.LogResponse]]{
+		Body: dto.PaginatedResult[dto.LogResponse]{
+			Items:  logResponses,
+			Total:  paginatedResult.Total,
+			Limit:  paginatedResult.Limit,
+			Offset: paginatedResult.Offset,
+		},
+	}
 }
 
-func (c *LogController) CreateLog(ctx context.Context, req dto.LogCreateRequest) (dto.LogResponse, error) {
-	if err := pkg.Validate(&req); err != nil {
-		return dto.LogResponse{}, err
+func (c *LogController) CreateLog(ctx context.Context, req *dto.LogCreateRequest) httpx.Response[dto.LogResponse] {
+	if err := pkg.Validate(req); err != nil {
+		return httpx.Response[dto.LogResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusBadRequest, // validation error
+			},
+		}
 	}
 
 	authorID, ok := pkg.GetUserID(ctx)
 	if !ok {
-		return dto.LogResponse{}, pkg.NewUnauthorizedError("Authentication required")
+		return httpx.Response[dto.LogResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusUnauthorized, // authentication required
+			},
+		}
 	}
 
 	log, err := c.logService.Create(ctx, req, &authorID)
 	if err != nil {
-		return dto.LogResponse{}, err
+		return httpx.Response[dto.LogResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusInternalServerError, // internal server error
+			},
+		}
 	}
 
 	res := dto.NewLogResponse(log)
-	return res, nil
+	return httpx.Response[dto.LogResponse]{
+		Body: res,
+	}
 }
 
-func (c *LogController) UpdateLog(ctx context.Context, id path.Int, req dto.LogUpdateRequest) (dto.LogResponse, error) {
+func (c *LogController) UpdateLog(ctx context.Context, id path.Int, req *dto.LogUpdateRequest) httpx.Response[dto.LogResponse] {
 
 	userID, ok := pkg.GetUserID(ctx)
 	if !ok {
-		return dto.LogResponse{}, pkg.NewUnauthorizedError("Authentication required")
+		return httpx.Response[dto.LogResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusUnauthorized, // authentication required
+			},
+		}
 	}
 
 	log, err := c.logService.Get(ctx, &id.Value)
 	if err != nil {
-		return dto.LogResponse{}, err
+		return httpx.Response[dto.LogResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusInternalServerError, // internal server error
+			},
+		}
 	}
 
 	hasPermission := false
@@ -132,28 +154,42 @@ func (c *LogController) UpdateLog(ctx context.Context, id path.Int, req dto.LogU
 	}
 
 	if !hasPermission {
-		return dto.LogResponse{}, pkg.NewForbiddenError("You don't have permission to update this log")
+		return httpx.Response[dto.LogResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusForbidden, // You don't have permission to update this log
+			},
+		}
 	}
 
 	updatedLog, err := c.logService.Update(ctx, &id.Value, req, &userID)
 	if err != nil {
-		return dto.LogResponse{}, err
+		return httpx.Response[dto.LogResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusInternalServerError, // internal server error
+			},
+		}
 	}
 
 	res := dto.NewLogResponse(updatedLog)
-	return res, nil
+	return httpx.Response[dto.LogResponse]{
+		Body: res,
+	}
 }
 
-func (c *LogController) DeleteLog(ctx context.Context, id path.Int) (interface{}, error) {
+func (c *LogController) DeleteLog(ctx context.Context, id path.Int) error {
 
 	userID, ok := pkg.GetUserID(ctx)
 	if !ok {
-		return nil, pkg.NewUnauthorizedError("Authentication required")
+		return httperr.Unauthorized("Authentication required")
 	}
 
 	log, err := c.logService.Get(ctx, &id.Value)
 	if err != nil {
-		return nil, err
+		return &httperr.HTTPError{
+			Status:  500,
+			Message: "Internal Server Error",
+			Cause:   err,
+		}
 	}
 
 	hasPermission := false
@@ -165,80 +201,166 @@ func (c *LogController) DeleteLog(ctx context.Context, id path.Int) (interface{}
 	}
 
 	if !hasPermission {
-		return nil, pkg.NewForbiddenError("You don't have permission to delete this log")
+		return &httperr.HTTPError{
+			Status:  403,
+			Message: "You don't have permission to delete this log",
+			Cause:   nil,
+		}
 	}
 
 	err = c.logService.Delete(ctx, &id.Value)
 	if err != nil {
-		return nil, err
+		return &httperr.HTTPError{
+			Status:  500,
+			Message: "Internal Server Error",
+			Cause:   err,
+		}
 	}
 
-	return map[string]string{"message": "log deleted successfully"}, nil
+	return nil
 }
 
-func (c *LogController) CreateComment(ctx context.Context, id path.Int, req dto.CommentCreateRequest) (dto.CommentResponse, error) {
+func (c *LogController) CreateComment(ctx context.Context, id path.Int, commentId path.Int, req *dto.CommentCreateRequest) httpx.Response[dto.CommentResponse] {
 
-	if err := pkg.Validate(&req); err != nil {
-		return dto.CommentResponse{}, err
+	if err := pkg.Validate(req); err != nil {
+		return httpx.Response[dto.CommentResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusBadRequest, // validation error
+			},
+		}
 	}
 
 	authorID, ok := pkg.GetUserID(ctx)
 	if !ok {
-		return dto.CommentResponse{}, pkg.NewUnauthorizedError("Authentication required")
+		return httpx.Response[dto.CommentResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusUnauthorized, // authentication required
+			},
+		}
 	}
 
-	comment, err := c.commentService.Create(ctx, req, &id.Value, &authorID)
+	comment, err := c.commentService.GetById(ctx, &commentId.Value)
 	if err != nil {
-		return dto.CommentResponse{}, err
+		return httpx.Response[dto.CommentResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusNotFound, // comment not found
+			},
+		}
+	}
+
+	if comment.AuthorID != authorID {
+		return httpx.Response[dto.CommentResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusForbidden, // forbidden
+			},
+		}
+	}
+
+	if comment.LogID != id.Value {
+		return httpx.Response[dto.CommentResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusBadRequest, // invalid log id
+			},
+		}
+	}
+
+	comment, err = c.commentService.Create(ctx, req, &commentId.Value, &authorID)
+	if err != nil {
+		return httpx.Response[dto.CommentResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusInternalServerError, // internal server error
+			},
+		}
 	}
 
 	res := dto.NewCommentResponse(comment)
-	return res, nil
+	return httpx.Response[dto.CommentResponse]{
+		Body: res,
+	}
 }
 
-func (c *LogController) UpdateComment(ctx context.Context, id path.Int, req dto.CommentUpdateRequest) (dto.CommentResponse, error) {
+func (c *LogController) UpdateComment(ctx context.Context, id path.Int, commentId path.Int, req *dto.CommentUpdateRequest) httpx.Response[dto.CommentResponse] {
 
-	if err := pkg.Validate(&req); err != nil {
-		return dto.CommentResponse{}, err
+	if err := pkg.Validate(req); err != nil {
+		return httpx.Response[dto.CommentResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusBadRequest, // validation error
+			},
+		}
 	}
 
-	comment, err := c.commentService.Update(ctx, &id.Value, req)
+	authorID, ok := pkg.GetUserID(ctx)
+	if !ok {
+		return httpx.Response[dto.CommentResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusUnauthorized, // authentication required
+			},
+		}
+	}
+
+	comment, err := c.commentService.GetById(ctx, &commentId.Value)
 	if err != nil {
-		return dto.CommentResponse{}, err
+		return httpx.Response[dto.CommentResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusInternalServerError, // internal server error
+			},
+		}
+	}
+
+	if comment.AuthorID != authorID {
+		return httpx.Response[dto.CommentResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusForbidden, // forbidden
+			},
+		}
+	}
+
+	if comment.LogID != id.Value {
+		return httpx.Response[dto.CommentResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusBadRequest, // invalid log id
+			},
+		}
+	}
+
+	comment, err = c.commentService.Update(ctx, &id.Value, req)
+	if err != nil {
+		return httpx.Response[dto.CommentResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusInternalServerError, // internal server error
+			},
+		}
 	}
 
 	res := dto.NewCommentResponse(comment)
-	return res, nil
+	return httpx.Response[dto.CommentResponse]{
+		Body: res,
+	}
 }
 
-func (c *LogController) DeleteComment(ctx context.Context, id path.Int) (interface{}, error) {
+func (c *LogController) DeleteComment(ctx context.Context, id path.Int) error {
 
 	err := c.commentService.Delete(ctx, &id.Value)
 	if err != nil {
-		return nil, err
+		return &httperr.HTTPError{
+			Status:  500,
+			Message: "Internal Server Error",
+			Cause:   err,
+		}
 	}
 
-	return map[string]string{"message": "comment deleted successfully"}, nil
+	return nil
 }
 
-func (c *LogController) FindAllCommentByLogID(ctx context.Context, q query.Values, id path.Int) (dto.PaginatedResult[dto.CommentResponse], error) {
-	limit := 20
-	if limitStr := q.Get("limit"); limitStr != "" {
-		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
-			limit = parsedLimit
-		}
-	}
+func (c *LogController) FindAllCommentByLogID(ctx context.Context, page query.Pagination, id path.Int) httpx.Response[dto.PaginatedResult[dto.CommentResponse]] {
 
-	offset := 0
-	if offsetStr := q.Get("offset"); offsetStr != "" {
-		if parsedOffset, err := strconv.Atoi(offsetStr); err == nil && parsedOffset >= 0 {
-			offset = parsedOffset
-		}
-	}
-
-	result, err := c.commentService.FindByLogID(ctx, &id.Value, limit, offset)
+	result, err := c.commentService.FindByLogID(ctx, &id.Value, page.Size, page.Page)
 	if err != nil {
-		return dto.PaginatedResult[dto.CommentResponse]{}, err
+		return httpx.Response[dto.PaginatedResult[dto.CommentResponse]]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusInternalServerError, // internal server error
+			},
+		}
 	}
 
 	commentResponses := make([]dto.CommentResponse, len(result.Items))
@@ -246,10 +368,12 @@ func (c *LogController) FindAllCommentByLogID(ctx context.Context, q query.Value
 		commentResponses[i] = dto.NewCommentResponse(item)
 	}
 
-	return dto.PaginatedResult[dto.CommentResponse]{
-		Items:  commentResponses,
-		Total:  result.Total,
-		Limit:  limit,
-		Offset: offset,
-	}, nil
+	return httpx.Response[dto.PaginatedResult[dto.CommentResponse]]{
+		Body: dto.PaginatedResult[dto.CommentResponse]{
+			Items:  commentResponses,
+			Total:  result.Total,
+			Limit:  result.Limit,
+			Offset: result.Offset,
+		},
+	}
 }

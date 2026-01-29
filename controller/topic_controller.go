@@ -4,8 +4,9 @@ import (
 	"analog-be/dto"
 	"analog-be/service"
 	"context"
+	"github.com/NARUBROWN/spine/pkg/httpx"
 	"github.com/NARUBROWN/spine/pkg/query"
-	"strconv"
+	"net/http"
 )
 
 type TopicController struct {
@@ -16,24 +17,15 @@ func NewTopicController(topicService *service.TopicService) *TopicController {
 	return &TopicController{topicService: topicService}
 }
 
-func (c *TopicController) GetList(ctx context.Context, q query.Values) ([]dto.TopicResponse, error) {
-	limit := 20
-	if limitStr := q.Get("limit"); limitStr != "" {
-		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
-			limit = parsedLimit
-		}
-	}
+func (c *TopicController) GetList(ctx context.Context, page query.Pagination) httpx.Response[[]dto.TopicResponse] {
 
-	offset := 0
-	if offsetStr := q.Get("offset"); offsetStr != "" {
-		if parsedOffset, err := strconv.Atoi(offsetStr); err == nil && parsedOffset >= 0 {
-			offset = parsedOffset
-		}
-	}
-
-	topics, err := c.topicService.FindAll(ctx, limit, offset)
+	topics, err := c.topicService.FindAll(ctx, page.Size, page.Page)
 	if err != nil {
-		return nil, err
+		return httpx.Response[[]dto.TopicResponse]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusInternalServerError, // internal server error
+			},
+		}
 	}
 
 	topicResponses := make([]dto.TopicResponse, len(topics))
@@ -41,5 +33,7 @@ func (c *TopicController) GetList(ctx context.Context, q query.Values) ([]dto.To
 		topicResponses[i] = dto.NewTopicResponse(topic)
 	}
 
-	return topicResponses, nil
+	return httpx.Response[[]dto.TopicResponse]{
+		Body: topicResponses,
+	}
 }

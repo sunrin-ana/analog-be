@@ -73,7 +73,7 @@ func (s *LogService) Search(ctx context.Context, query string, limit int, offset
 	}, nil
 }
 
-func (s *LogService) Create(ctx context.Context, req dto.LogCreateRequest, authorID *entity.ID) (*entity.Log, error) {
+func (s *LogService) Create(ctx context.Context, req *dto.LogCreateRequest, authorID *entity.ID) (*entity.Log, error) {
 	now := time.Now().UTC()
 
 	log := &entity.Log{
@@ -109,7 +109,7 @@ func (s *LogService) Create(ctx context.Context, req dto.LogCreateRequest, autho
 	return log, nil
 }
 
-func (s *LogService) Update(ctx context.Context, id *entity.ID, req dto.LogUpdateRequest, authorID *entity.ID) (*entity.Log, error) {
+func (s *LogService) Update(ctx context.Context, id *entity.ID, req *dto.LogUpdateRequest, authorID *entity.ID) (*entity.Log, error) {
 	log, err := s.logRepository.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
