@@ -24,6 +24,16 @@ func NewUserController(userService *service.UserService) *UserController {
 	}
 }
 
+// Get gets a single user by their ID.
+// @Summary      GetUserByID
+// @Description  Get a single user by their ID.
+// @Tags         User
+// @Produce      json
+// @Param        id path int true "User ID"
+// @Success      200 {object} dto.UserResponse
+// @Failure      404 "Not Found"
+// @Security     ApiKeyAuth
+// @Router       /users/{id} [get]
 func (c *UserController) Get(ctx context.Context, id path.Int) httpx.Response[dto.UserResponse] {
 	user, err := c.userService.Get(ctx, &id.Value)
 	if err != nil {
@@ -41,6 +51,17 @@ func (c *UserController) Get(ctx context.Context, id path.Int) httpx.Response[dt
 	}
 }
 
+// Create creates a new user.
+// @Summary      CreateUser
+// @Description  Create a new user.
+// @Tags         User
+// @Accept       json
+// @Produce      json
+// @Param        user body dto.UserCreateRequest true "User to create"
+// @Success      201 {object} dto.UserResponse
+// @Failure      400 "Bad Request"
+// @Failure      500 "Internal Server Error"
+// @Router       /users [post]
 func (c *UserController) Create(ctx context.Context, req *dto.UserCreateRequest) httpx.Response[dto.UserResponse] {
 	if req.Name == "" {
 		return httpx.Response[dto.UserResponse]{
@@ -68,6 +89,18 @@ func (c *UserController) Create(ctx context.Context, req *dto.UserCreateRequest)
 	}
 }
 
+// Update updates the current user's information.
+// @Summary      UpdateUser
+// @Description  Update the current user's information.
+// @Tags         User
+// @Accept       json
+// @Produce      json
+// @Param        user body dto.UserUpdateRequest true "User data to update"
+// @Success      200 {object} dto.UserResponse
+// @Failure      401 "Unauthorized"
+// @Failure      500 "Internal Server Error"
+// @Security     ApiKeyAuth
+// @Router       /users [put]
 func (c *UserController) Update(ctx context.Context, req *dto.UserUpdateRequest, spineCtx spine.Ctx) httpx.Response[dto.UserResponse] {
 	v, ok := spineCtx.Get(string(pkg.UserIDKey))
 	if !ok {
@@ -95,6 +128,15 @@ func (c *UserController) Update(ctx context.Context, req *dto.UserUpdateRequest,
 	}
 }
 
+// Delete deletes the current user.
+// @Summary      DeleteUser
+// @Description  Delete the current user.
+// @Tags         User
+// @Success      204 "No Content"
+// @Failure      401 "Unauthorized"
+// @Failure      500 "Internal Server Error"
+// @Security     ApiKeyAuth
+// @Router       /users [delete]
 func (c *UserController) Delete(ctx context.Context, spineCtx spine.Ctx) error {
 
 	v, ok := spineCtx.Get(string(pkg.UserIDKey))
@@ -120,6 +162,18 @@ func (c *UserController) Delete(ctx context.Context, spineCtx spine.Ctx) error {
 	return nil
 }
 
+// Search searches for users by a query string.
+// @Summary      SearchUsers
+// @Description  Search for users by a query string.
+// @Tags         User
+// @Produce      json
+// @Param        q query string true "Search query"
+// @Param        page query int false "Page number"
+// @Param        size query int false "Page size"
+// @Success      200 {object} dto.PaginatedResult[dto.UserResponse]
+// @Failure      400 "Bad Request"
+// @Failure      404 "Not Found"
+// @Router       /users/search/list [get]
 func (c *UserController) Search(ctx context.Context, q query.Values, page query.Pagination) httpx.Response[dto.PaginatedResult[dto.UserResponse]] {
 	searchQuery := q.Get("q")
 	if searchQuery == "" {
@@ -134,7 +188,7 @@ func (c *UserController) Search(ctx context.Context, q query.Values, page query.
 	if err != nil {
 		return httpx.Response[dto.PaginatedResult[dto.UserResponse]]{
 			Options: httpx.ResponseOptions{
-				Status: http.StatusInternalServerError, // internal server error
+				Status: http.StatusNotFound, // not found
 			},
 		}
 	}
@@ -154,6 +208,16 @@ func (c *UserController) Search(ctx context.Context, q query.Values, page query.
 	}
 }
 
+// GetMe gets the currently authenticated user's information.
+// @Summary      GetCurrentUser
+// @Description  Get the currently authenticated user's information.
+// @Tags         User
+// @Produce      json
+// @Success      200 {object} dto.UserResponse
+// @Failure      401 "Unauthorized"
+// @Failure      500 "Internal Server Error"
+// @Security     ApiKeyAuth
+// @Router       /users/me [get]
 func (c *UserController) GetMe(ctx context.Context, spineCtx spine.Ctx) httpx.Response[dto.UserResponse] {
 	v, ok := spineCtx.Get(string(pkg.UserIDKey))
 	if !ok {
