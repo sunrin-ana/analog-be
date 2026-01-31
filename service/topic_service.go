@@ -1,7 +1,6 @@
 package service
 
 import (
-	"analog-be/dto"
 	"analog-be/entity"
 	"analog-be/repository"
 	"context"
@@ -15,11 +14,7 @@ func NewTopicService(topicRepository *repository.TopicRepository) *TopicService 
 	return &TopicService{topicRepository: topicRepository}
 }
 
-func (s *TopicService) Create(ctx context.Context, req dto.CommentCreateRequest) (*entity.Topic, error) {
-	topic := &entity.Topic{
-		Name: req.Content,
-	}
-
+func (s *TopicService) Create(ctx context.Context, topic *entity.Topic) (*entity.Topic, error) {
 	return s.topicRepository.Create(ctx, topic)
 }
 func (s *TopicService) FindAll(ctx context.Context, limit int, offset int) ([]*entity.Topic, error) {

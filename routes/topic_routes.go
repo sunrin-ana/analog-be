@@ -7,4 +7,5 @@ import (
 
 func RegisterTopicRoutes(app spine.App) {
 	app.Route("GET", "/topic", (*controller.TopicController).GetList)
+	app.Route("POST", "/topic", (*controller.TopicController).Create)
 }

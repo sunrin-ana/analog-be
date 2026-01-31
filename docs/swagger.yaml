@@ -1,0 +1,996 @@
+basePath: /api
+definitions:
+  controller.HealthResponse:
+    properties:
+      services:
+        additionalProperties:
+          type: string
+        type: object
+      status:
+        type: string
+      timestamp:
+        type: string
+    type: object
+  dto.AuthResponse:
+    properties:
+      expiresAt:
+        type: string
+      sessionToken:
+        type: string
+      user:
+        $ref: '#/definitions/dto.UserDTO'
+    type: object
+  dto.CommentCreateRequest:
+    properties:
+      content:
+        maxLength: 5000
+        minLength: 1
+        type: string
+    required:
+    - content
+    type: object
+  dto.CommentResponse:
+    properties:
+      author:
+        $ref: '#/definitions/dto.UserResponse'
+      content:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: integer
+      logId:
+        type: integer
+    type: object
+  dto.CommentUpdateRequest:
+    properties:
+      content:
+        maxLength: 5000
+        minLength: 1
+        type: string
+    required:
+    - content
+    type: object
+  dto.LogCreateRequest:
+    properties:
+      coAuthorIDs:
+        items:
+          type: integer
+        maxItems: 100
+        type: array
+      content:
+        maxLength: 50000
+        minLength: 1
+        type: string
+      generations:
+        items:
+          type: integer
+        maxItems: 50
+        type: array
+      title:
+        maxLength: 200
+        minLength: 1
+        type: string
+      topicIDs:
+        items:
+          type: integer
+        maxItems: 20
+        type: array
+    required:
+    - content
+    - title
+    type: object
+  dto.LogResponse:
+    properties:
+      content:
+        type: string
+      createdAt:
+        type: string
+      generations:
+        items:
+          type: integer
+        type: array
+      id:
+        type: integer
+      loggedBy:
+        items:
+          $ref: '#/definitions/dto.UserResponse'
+        type: array
+      title:
+        type: string
+      topics:
+        items:
+          $ref: '#/definitions/dto.TopicResponse'
+        type: array
+    type: object
+  dto.LogUpdateRequest:
+    properties:
+      coAuthorIDs:
+        items:
+          type: integer
+        type: array
+      content:
+        type: string
+      generations:
+        items:
+          type: integer
+        type: array
+      title:
+        type: string
+      topicIDs:
+        items:
+          type: integer
+        type: array
+    type: object
+  dto.LoginInitRequest:
+    properties:
+      redirectUri:
+        type: string
+    required:
+    - redirectUri
+    type: object
+  dto.LoginInitResponse:
+    properties:
+      authorizationUrl:
+        type: string
+      state:
+        type: string
+    type: object
+  dto.PaginatedResult-dto_CommentResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/dto.CommentResponse'
+        type: array
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  dto.PaginatedResult-dto_LogResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/dto.LogResponse'
+        type: array
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  dto.PaginatedResult-dto_UserResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/dto.UserResponse'
+        type: array
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  dto.SignupInitRequest:
+    properties:
+      redirectUri:
+        type: string
+    required:
+    - redirectUri
+    type: object
+  dto.SignupInitResponse:
+    properties:
+      authorizationUrl:
+        type: string
+      state:
+        type: string
+    type: object
+  dto.TokenRefreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  dto.TokenResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      refresh_token:
+        type: string
+      scope:
+        type: string
+      token_type:
+        type: string
+    type: object
+  dto.TopicCreateRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  dto.TopicResponse:
+    properties:
+      count:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  dto.UserCreateRequest:
+    properties:
+      connections:
+        items:
+          type: string
+        type: array
+      generation:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      partOf:
+        type: string
+      profileImage:
+        type: string
+    required:
+    - name
+    type: object
+  dto.UserDTO:
+    properties:
+      connections:
+        items:
+          type: string
+        type: array
+      generation:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      partOf:
+        type: string
+      profileImage:
+        type: string
+    type: object
+  dto.UserResponse:
+    properties:
+      connections:
+        items:
+          type: string
+        type: array
+      generation:
+        type: integer
+      id:
+        type: integer
+      joinedAt:
+        type: string
+      name:
+        type: string
+      partOf:
+        type: string
+      profileImage:
+        type: string
+    type: object
+  dto.UserUpdateRequest:
+    properties:
+      connections:
+        items:
+          type: string
+        type: array
+      generation:
+        type: integer
+      name:
+        type: string
+      partOf:
+        type: string
+      profileImage:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Spine 기반 REST API
+  title: AnAlog API
+  version: 1.0.0
+paths:
+  /auth/login/callback:
+    get:
+      description: Handle the OAuth2 callback after a successful login.
+      parameters:
+      - description: Authorization code
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: State
+        in: query
+        name: state
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AuthResponse'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      summary: HandleLoginCallback
+      tags:
+      - Auth
+  /auth/login/init:
+    post:
+      consumes:
+      - application/json
+      description: Initiate the OAuth2 login flow.
+      parameters:
+      - description: Login initiation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginInitRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.LoginInitResponse'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      summary: InitiateLogin
+      tags:
+      - Auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Log out the current user.
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      security:
+      - ApiKeyAuth: []
+      summary: Logout
+      tags:
+      - Auth
+  /auth/me:
+    get:
+      description: Get the currently authenticated user's information.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserDTO'
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+      security:
+      - ApiKeyAuth: []
+      summary: GetCurrentUser
+      tags:
+      - Auth
+  /auth/signup/callback:
+    get:
+      description: Handle the OAuth2 callback after a successful signup.
+      parameters:
+      - description: Authorization code
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: State
+        in: query
+        name: state
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AuthResponse'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      summary: HandleSignupCallback
+      tags:
+      - Auth
+  /auth/signup/init:
+    post:
+      consumes:
+      - application/json
+      description: Initiate the OAuth2 signup flow.
+      parameters:
+      - description: Signup initiation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SignupInitRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SignupInitResponse'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      summary: InitiateSignup
+      tags:
+      - Auth
+  /auth/token/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Refresh the access token using a refresh token.
+      parameters:
+      - description: Token refresh request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.TokenRefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TokenResponse'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      summary: RefreshToken
+      tags:
+      - Auth
+  /health:
+    get:
+      description: Checks the health of the service.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.HealthResponse'
+      summary: Health
+      tags:
+      - Health
+  /health/live:
+    get:
+      description: Checks if the service is alive.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.HealthResponse'
+      summary: Live
+      tags:
+      - Health
+  /health/ready:
+    get:
+      description: Checks if the service is ready to serve traffic.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.HealthResponse'
+      summary: Ready
+      tags:
+      - Health
+  /logs:
+    get:
+      description: Get a paginated list of logs.
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PaginatedResult-dto_LogResponse'
+        "404":
+          description: Not Found
+      summary: GetListOfLog
+      tags:
+      - Log
+    post:
+      consumes:
+      - application/json
+      description: Create a new log.
+      parameters:
+      - description: Log to create
+        in: body
+        name: log
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LogCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.LogResponse'
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+      security:
+      - ApiKeyAuth: []
+      summary: CreateLog
+      tags:
+      - Log
+  /logs/{id}:
+    delete:
+      description: Delete a log by its ID.
+      parameters:
+      - description: Log ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - ApiKeyAuth: []
+      summary: DeleteLog
+      tags:
+      - Log
+    get:
+      description: Get a single log by its ID.
+      parameters:
+      - description: Log ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.LogResponse'
+        "404":
+          description: Not Found
+      summary: GetLog
+      tags:
+      - Log
+    put:
+      consumes:
+      - application/json
+      description: Update an existing log.
+      parameters:
+      - description: Log ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Log data to update
+        in: body
+        name: log
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LogUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.LogResponse'
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - ApiKeyAuth: []
+      summary: UpdateLog
+      tags:
+      - Log
+  /logs/{id}/comments:
+    get:
+      description: Get a paginated list of all comments for a specific log.
+      parameters:
+      - description: Log ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PaginatedResult-dto_CommentResponse'
+        "404":
+          description: Not Found
+      summary: FindAllCommentByLogID
+      tags:
+      - Comment
+    post:
+      consumes:
+      - application/json
+      description: Create a new comment on a specific log.
+      parameters:
+      - description: Log ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Comment to create
+        in: body
+        name: comment
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CommentCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CommentResponse'
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+      security:
+      - ApiKeyAuth: []
+      summary: CreateComment
+      tags:
+      - Comment
+  /logs/{id}/comments/{commentId}:
+    delete:
+      description: Delete a comment by its ID.
+      parameters:
+      - description: Log ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Comment ID
+        in: path
+        name: commentId
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      security:
+      - ApiKeyAuth: []
+      summary: DeleteComment
+      tags:
+      - Comment
+    put:
+      consumes:
+      - application/json
+      description: Update an existing comment.
+      parameters:
+      - description: Log ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Comment ID
+        in: path
+        name: commentId
+        required: true
+        type: integer
+      - description: Comment data to update
+        in: body
+        name: comment
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CommentUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CommentResponse'
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      security:
+      - ApiKeyAuth: []
+      summary: UpdateComment
+      tags:
+      - Comment
+  /logs/search/list:
+    get:
+      description: Search for logs by a query string.
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PaginatedResult-dto_LogResponse'
+        "404":
+          description: Not Found
+      summary: SearchLogs
+      tags:
+      - Log
+  /topic:
+    get:
+      description: Get a paginated list of topics.
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.TopicResponse'
+            type: array
+        "404":
+          description: Not Found
+      summary: GetListOfTopics
+      tags:
+      - Topic
+    post:
+      consumes:
+      - application/json
+      description: Create a new topic.
+      parameters:
+      - description: Topic to create
+        in: body
+        name: topic
+        required: true
+        schema:
+          $ref: '#/definitions/dto.TopicCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.TopicResponse'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      summary: CreateTopic
+      tags:
+      - Topic
+  /users:
+    delete:
+      description: Delete the current user.
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+      security:
+      - ApiKeyAuth: []
+      summary: DeleteUser
+      tags:
+      - User
+    post:
+      consumes:
+      - application/json
+      description: Create a new user.
+      parameters:
+      - description: User to create
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UserCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.UserResponse'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      summary: CreateUser
+      tags:
+      - User
+    put:
+      consumes:
+      - application/json
+      description: Update the current user's information.
+      parameters:
+      - description: User data to update
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UserUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserResponse'
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+      security:
+      - ApiKeyAuth: []
+      summary: UpdateUser
+      tags:
+      - User
+  /users/{id}:
+    get:
+      description: Get a single user by their ID.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserResponse'
+        "404":
+          description: Not Found
+      security:
+      - ApiKeyAuth: []
+      summary: GetUserByID
+      tags:
+      - User
+  /users/me:
+    get:
+      description: Get the currently authenticated user's information.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserResponse'
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+      security:
+      - ApiKeyAuth: []
+      summary: GetCurrentUser
+      tags:
+      - User
+  /users/search/list:
+    get:
+      description: Search for users by a query string.
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PaginatedResult-dto_UserResponse'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+      summary: SearchUsers
+      tags:
+      - User
+swagger: "2.0"

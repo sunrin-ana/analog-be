@@ -12,4 +12,6 @@ type User struct {
 	PartOf       string    `bun:"part_of"`
 	Generation   uint16    `bun:"generation"`
 	Connections  []string  `bun:"connections,array"`
+	CreatedAt    time.Time `bun:"created_at,notnull,default:current_timestamp"`
+	UpdatedAt    time.Time `bun:"updated_at,notnull,default:current_timestamp"`
 }

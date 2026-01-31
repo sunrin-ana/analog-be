@@ -58,12 +58,6 @@ type CommentResponse struct {
 	CreatedAt time.Time    `json:"createdAt"`
 }
 
-type TopicResponse struct {
-	ID    entity.ID `json:"id"`
-	Name  string    `json:"name"`
-	Count int64     `json:"count"`
-}
-
 func NewLogResponse(l *entity.Log) LogResponse {
 	var topics []TopicResponse
 	if l.Topics != nil {
@@ -104,12 +98,5 @@ func NewCommentResponse(c *entity.Comment) CommentResponse {
 		Author:    author,
 		Content:   c.Content,
 		CreatedAt: c.CreatedAt,
-	}
-}
-
-func NewTopicResponse(t *entity.Topic) TopicResponse {
-	return TopicResponse{
-		ID:   t.ID,
-		Name: t.Name,
 	}
 }

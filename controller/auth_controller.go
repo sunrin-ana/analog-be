@@ -24,6 +24,17 @@ func NewAuthController(anAccountOAuthService *service.AnAccountService, userServ
 	}
 }
 
+// InitiateLogin initiates the OAuth2 login flow.
+// @Summary      InitiateLogin
+// @Description  Initiate the OAuth2 login flow.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.LoginInitRequest true "Login initiation request"
+// @Success      200 {object} dto.LoginInitResponse
+// @Failure      400 "Bad Request"
+// @Failure      500 "Internal Server Error"
+// @Router       /auth/login/init [post]
 func (c *AuthController) InitiateLogin(ctx context.Context, req *dto.LoginInitRequest) httpx.Response[dto.LoginInitResponse] {
 	if req.RedirectUri == "" {
 		return httpx.Response[dto.LoginInitResponse]{
@@ -46,6 +57,17 @@ func (c *AuthController) InitiateLogin(ctx context.Context, req *dto.LoginInitRe
 	}
 }
 
+// InitiateSignup initiates the OAuth2 signup flow.
+// @Summary      InitiateSignup
+// @Description  Initiate the OAuth2 signup flow.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.SignupInitRequest true "Signup initiation request"
+// @Success      200 {object} dto.SignupInitResponse
+// @Failure      400 "Bad Request"
+// @Failure      500 "Internal Server Error"
+// @Router       /auth/signup/init [post]
 func (c *AuthController) InitiateSignup(ctx context.Context, req *dto.SignupInitRequest) httpx.Response[dto.SignupInitResponse] {
 	if req.RedirectUri == "" {
 		return httpx.Response[dto.SignupInitResponse]{
@@ -69,6 +91,17 @@ func (c *AuthController) InitiateSignup(ctx context.Context, req *dto.SignupInit
 	}
 }
 
+// HandleLoginCallback handles the OAuth2 callback after a successful login.
+// @Summary      HandleLoginCallback
+// @Description  Handle the OAuth2 callback after a successful login.
+// @Tags         Auth
+// @Produce      json
+// @Param        code query string true "Authorization code"
+// @Param        state query string true "State"
+// @Success      200 {object} dto.AuthResponse
+// @Failure      400 "Bad Request"
+// @Failure      500 "Internal Server Error"
+// @Router       /auth/login/callback [get]
 func (c *AuthController) HandleLoginCallback(ctx context.Context, q query.Values) httpx.Response[dto.AuthResponse] {
 	code := q.Get("code")
 	state := q.Get("state")
@@ -102,6 +135,17 @@ func (c *AuthController) HandleLoginCallback(ctx context.Context, q query.Values
 	}
 }
 
+// HandleSignupCallback handles the OAuth2 callback after a successful signup.
+// @Summary      HandleSignupCallback
+// @Description  Handle the OAuth2 callback after a successful signup.
+// @Tags         Auth
+// @Produce      json
+// @Param        code query string true "Authorization code"
+// @Param        state query string true "State"
+// @Success      200 {object} dto.AuthResponse
+// @Failure      400 "Bad Request"
+// @Failure      500 "Internal Server Error"
+// @Router       /auth/signup/callback [get]
 func (c *AuthController) HandleSignupCallback(ctx context.Context, q query.Values) httpx.Response[dto.AuthResponse] {
 	code := q.Get("code")
 	state := q.Get("state")
@@ -135,6 +179,16 @@ func (c *AuthController) HandleSignupCallback(ctx context.Context, q query.Value
 	}
 }
 
+// Logout logs out the current user.
+// @Summary      Logout
+// @Description  Log out the current user.
+// @Tags         Auth
+// @Accept       json
+// @Success      204 "No Content"
+// @Failure      400 "Bad Request"
+// @Failure      500 "Internal Server Error"
+// @Security     ApiKeyAuth
+// @Router       /auth/logout [post]
 func (c *AuthController) Logout(ctx context.Context, req *dto.LogoutRequest) error {
 	sessionToken, ok := pkg.GetSessionToken(ctx)
 	if !ok || sessionToken == "" {
@@ -157,6 +211,16 @@ func (c *AuthController) Logout(ctx context.Context, req *dto.LogoutRequest) err
 	return nil
 }
 
+// GetCurrentUser gets the currently authenticated user's information.
+// @Summary      GetCurrentUser
+// @Description  Get the currently authenticated user's information.
+// @Tags         Auth
+// @Produce      json
+// @Success      200 {object} dto.UserDTO
+// @Failure      401 "Unauthorized"
+// @Failure      500 "Internal Server Error"
+// @Security     ApiKeyAuth
+// @Router       /auth/me [get]
 func (c *AuthController) GetCurrentUser(ctx context.Context) httpx.Response[dto.UserDTO] {
 	sessionToken, ok := pkg.GetSessionToken(ctx)
 	if !ok || sessionToken == "" {
@@ -188,6 +252,17 @@ func (c *AuthController) GetCurrentUser(ctx context.Context) httpx.Response[dto.
 	}
 }
 
+// RefreshToken refreshes the access token using a refresh token.
+// @Summary      RefreshToken
+// @Description  Refresh the access token using a refresh token.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.TokenRefreshRequest true "Token refresh request"
+// @Success      200 {object} dto.TokenResponse
+// @Failure      400 "Bad Request"
+// @Failure      500 "Internal Server Error"
+// @Router       /auth/token/refresh [post]
 func (c *AuthController) RefreshToken(ctx context.Context, req *dto.TokenRefreshRequest) httpx.Response[dto.TokenResponse] {
 	if req.RefreshToken == "" {
 		return httpx.Response[dto.TokenResponse]{

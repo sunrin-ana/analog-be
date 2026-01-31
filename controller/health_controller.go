@@ -27,6 +27,13 @@ type HealthResponse struct {
 	Services  map[string]string `json:"services"`
 }
 
+// Health checks the health of the service.
+// @Summary      Health
+// @Description  Checks the health of the service.
+// @Tags         Health
+// @Produce      json
+// @Success      200 {object} HealthResponse
+// @Router       /health [get]
 func (c *HealthController) Health(ctx context.Context) httpx.Response[HealthResponse] {
 	return httpx.Response[HealthResponse]{
 		Body: HealthResponse{
@@ -36,6 +43,13 @@ func (c *HealthController) Health(ctx context.Context) httpx.Response[HealthResp
 	}
 }
 
+// Ready checks if the service is ready to serve traffic.
+// @Summary      Ready
+// @Description  Checks if the service is ready to serve traffic.
+// @Tags         Health
+// @Produce      json
+// @Success      200 {object} HealthResponse
+// @Router       /health/ready [get]
 func (c *HealthController) Ready(ctx context.Context) httpx.Response[HealthResponse] {
 	services := make(map[string]string)
 
@@ -67,6 +81,13 @@ func (c *HealthController) Ready(ctx context.Context) httpx.Response[HealthRespo
 	}
 }
 
+// Live checks if the service is alive.
+// @Summary      Live
+// @Description  Checks if the service is alive.
+// @Tags         Health
+// @Produce      json
+// @Success      200 {object} HealthResponse
+// @Router       /health/live [get]
 func (c *HealthController) Live(ctx context.Context) httpx.Response[HealthResponse] {
 	return httpx.Response[HealthResponse]{
 		Body: HealthResponse{
