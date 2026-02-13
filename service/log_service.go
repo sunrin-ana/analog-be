@@ -4,21 +4,30 @@ import (
 	"analog-be/dto"
 	"analog-be/entity"
 	"analog-be/repository"
+	"bytes"
 	"context"
 	"time"
+
+	"github.com/yuin/goldmark"
+	"golang.org/x/sync/errgroup"
 )
 
 type LogService struct {
-	logRepository      *repository.LogRepository
-	commentRepository  *repository.CommentRepository
-	anamericanoService *AnAmericanoService
+	logRepository        *repository.LogRepository
+	commentRepository    *repository.CommentRepository
+	anamericanoService   *AnAmericanoService
+	preRenderThreadGroup *errgroup.Group
 }
 
 func NewLogService(logRepository *repository.LogRepository, commentRepository *repository.CommentRepository, anamericanoService *AnAmericanoService) *LogService {
+	g, _ := errgroup.WithContext(context.Background())
+	g.SetLimit(4)
+
 	return &LogService{
-		logRepository:      logRepository,
-		commentRepository:  commentRepository,
-		anamericanoService: anamericanoService,
+		logRepository:        logRepository,
+		commentRepository:    commentRepository,
+		anamericanoService:   anamericanoService,
+		preRenderThreadGroup: g,
 	}
 }
 
@@ -123,6 +132,13 @@ func (s *LogService) Update(ctx context.Context, id *entity.ID, req *dto.LogUpda
 	}
 	if req.Content != nil {
 		log.Content = *req.Content
+		s.preRenderThreadGroup.Go(func() error {
+			err := s.PreRender(ctx, id)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 	}
 
 	if req.CoAuthorIDs != nil {
@@ -150,4 +166,27 @@ func (s *LogService) Delete(ctx context.Context, id *entity.ID) error {
 	}
 
 	return s.logRepository.Delete(ctx, id)
+}
+
+func (s *LogService) PreRender(ctx context.Context, id *entity.ID) error {
+	log, err := s.logRepository.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	var rendered bytes.Buffer
+
+	if err = goldmark.Convert([]byte(log.Content), &rendered); err != nil {
+		return err
+	}
+
+	log.PreRendered = rendered.String()
+
+	log, err = s.logRepository.Update(ctx, log, nil, nil)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
