@@ -81,6 +81,7 @@ func main() {
 		service.NewCommentService,
 		service.NewTopicService,
 		service.NewAnAmericanoService,
+		service.NewFeedService,
 
 		// 컨트롤러
 		controller.NewHealthController,
