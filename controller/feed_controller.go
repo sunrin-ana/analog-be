@@ -2,6 +2,7 @@ package controller
 
 import (
 	"analog-be/service"
+	"context"
 	"net/http"
 	"strings"
 
@@ -16,7 +17,7 @@ func NewFeedController(service *service.FeedService) *FeedController {
 	return &FeedController{service: service}
 }
 
-func (c *FeedController) GetFeed() httpx.Response[string] {
+func (c *FeedController) GetFeed(ctx context.Context) httpx.Response[string] {
 	return httpx.Response[string]{
 		Body: c.service.GetRSSFeed(),
 		Options: httpx.ResponseOptions{
@@ -25,7 +26,7 @@ func (c *FeedController) GetFeed() httpx.Response[string] {
 	}
 }
 
-func (c *FeedController) GetSitemap(file string) httpx.Response[string] {
+func (c *FeedController) GetSitemap(ctx context.Context, file string) httpx.Response[string] {
 	if !strings.HasPrefix(file, "sitemap-") || !strings.HasSuffix(file, ".xml") {
 		return httpx.Response[string]{
 			Options: httpx.ResponseOptions{
