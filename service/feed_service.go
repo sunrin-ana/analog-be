@@ -161,6 +161,15 @@ func (f *FeedService) UpdateSitemap(log *entity.Log) error {
 	return nil
 }
 
+func (f *FeedService) GetSitemap(name string) string {
+	file, err := os.ReadFile("./sitemap/" + name) // TODO: 해당 로직은 매우 위험함. 향후 Spine에서 공식적으로 static resource를 지원하게 되면 해당 로직을 대체할 것
+	if err != nil {
+		return ""
+	}
+
+	return string(file)
+}
+
 func UpdateIndexMap(idx int) error {
 	file, err := os.Create("./sitemap/sitemap-index.xml")
 	if err != nil {

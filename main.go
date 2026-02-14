@@ -11,12 +11,13 @@ import (
 	"context"
 	"crypto/tls"
 	"database/sql"
-	"github.com/NARUBROWN/spine/pkg/boot"
-	"github.com/joho/godotenv"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/NARUBROWN/spine/pkg/boot"
+	"github.com/joho/godotenv"
 
 	"github.com/NARUBROWN/spine"
 	"github.com/uptrace/bun"
@@ -87,6 +88,7 @@ func main() {
 		controller.NewUserController,
 		controller.NewAuthController,
 		controller.NewTopicController,
+		controller.NewFeedController,
 
 		// 인터셉터
 		interceptor.NewTxInterceptor,
@@ -106,6 +108,7 @@ func main() {
 	routes.RegisterUserRoutes(app)
 	routes.RegisterAuthRoutes(app)
 	routes.RegisterTopicRoutes(app)
+	routes.RegisterFeedRoutes(app)
 
 	go func() {
 		sigint := make(chan os.Signal, 1)
