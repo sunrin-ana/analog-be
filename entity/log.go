@@ -1,8 +1,9 @@
 package entity
 
 import (
-	"github.com/uptrace/bun"
 	"time"
+
+	"github.com/uptrace/bun"
 )
 
 // Log 는 Analog에서 article을 의미합니다.
@@ -14,6 +15,7 @@ type Log struct {
 	Topics      []*Topic  `bun:"m2m:log_to_topics,join:Log=Topic"`
 	Generations []uint16  `bun:"generations,array"`
 	Content     string    `bun:"content"`
+	PreRendered string    `bun:"pre_rendered"`
 	CreatedAt   time.Time `bun:"created_at"`
 	LoggedBy    []*User   `bun:"m2m:log_to_users,join:Log=User"`
 }

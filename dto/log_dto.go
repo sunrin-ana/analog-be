@@ -80,7 +80,7 @@ func NewLogResponse(l *entity.Log) LogResponse {
 		Title:       l.Title,
 		Topics:      topics,
 		Generations: l.Generations,
-		Content:     l.Content,
+		Content:     l.PreRendered,
 		CreatedAt:   l.CreatedAt,
 		LoggedBy:    loggedBy,
 	}

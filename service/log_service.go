@@ -4,14 +4,19 @@ import (
 	"analog-be/dto"
 	"analog-be/entity"
 	"analog-be/repository"
+	"bytes"
 	"context"
 	"time"
+
+	"github.com/yuin/goldmark"
+	"golang.org/x/sync/semaphore"
 )
 
 type LogService struct {
 	logRepository      *repository.LogRepository
 	commentRepository  *repository.CommentRepository
 	anamericanoService *AnAmericanoService
+	prerenderJobs      *semaphore.Weighted
 }
 
 func NewLogService(logRepository *repository.LogRepository, commentRepository *repository.CommentRepository, anamericanoService *AnAmericanoService) *LogService {
@@ -19,6 +24,7 @@ func NewLogService(logRepository *repository.LogRepository, commentRepository *r
 		logRepository:      logRepository,
 		commentRepository:  commentRepository,
 		anamericanoService: anamericanoService,
+		prerenderJobs:      semaphore.NewWeighted(4),
 	}
 }
 
@@ -121,8 +127,24 @@ func (s *LogService) Update(ctx context.Context, id *entity.ID, req *dto.LogUpda
 	if req.Generations != nil {
 		log.Generations = *req.Generations
 	}
+
 	if req.Content != nil {
 		log.Content = *req.Content
+		go func() {
+			gctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			if err := s.prerenderJobs.Acquire(gctx, 1); err != nil {
+				return
+			}
+
+			defer s.prerenderJobs.Release(1)
+
+			err := s.PreRender(gctx, id)
+			if err != nil {
+				println(err.Error())
+			}
+		}()
 	}
 
 	if req.CoAuthorIDs != nil {
@@ -150,4 +172,27 @@ func (s *LogService) Delete(ctx context.Context, id *entity.ID) error {
 	}
 
 	return s.logRepository.Delete(ctx, id)
+}
+
+func (s *LogService) PreRender(ctx context.Context, id *entity.ID) error {
+	log, err := s.logRepository.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	var rendered bytes.Buffer
+
+	if err = goldmark.Convert([]byte(log.Content), &rendered); err != nil {
+		return err
+	}
+
+	log.PreRendered = rendered.String()
+
+	log, err = s.logRepository.Update(ctx, log, nil, nil)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
