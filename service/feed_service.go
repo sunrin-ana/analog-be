@@ -14,9 +14,6 @@ import (
 	"time"
 )
 
-const SITE_PREFIX = "https://log.ana.st/sitemaps/"
-const ARITCLE_URL_FORMAT = "https://log.ana.st/%s/logs/%s"
-
 const RSS_FEED_PREFIX = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><rss version=\"2.0\"><channel><title>Analog</title><link>https://log.ana.st/</link><description>Latest articles from Analog</description><copyright>2026 Application and Architecture Club, Sunrin Internet High School</copyright><ttl>60</ttl>"
 const RSS_FEED_SUFFIX = "</channel></rss>"
 
@@ -157,9 +154,10 @@ func UpdateIndexMap(idx int) error {
 	}
 
 	enc := xml.NewEncoder(file)
+	prefix := os.Getenv("SITEMAP_PREFIX") + "sitemap-"
 
 	for i := 0; i < idx; i++ {
-		enc.Encode(dto.SitemapElement{Loc: fmt.Sprintf(SITE_PREFIX+"sitemap-%d.xml", i), Lastmod: time.Now().Format(time.RFC1123Z)})
+		enc.Encode(dto.SitemapElement{Loc: fmt.Sprintf(prefix+"%d.xml", i), Lastmod: time.Now().Format(time.RFC1123Z)})
 	}
 	enc.Flush()
 
@@ -179,6 +177,7 @@ func GetLatestSitemap() (int, error) {
 	decoder := xml.NewDecoder(xmlFile)
 
 	var inElement string
+	sitePrefix := os.Getenv("SITEMAP_PREFIX") + "sitemap-"
 
 	for {
 		t, _ := decoder.Token()
@@ -193,7 +192,7 @@ func GetLatestSitemap() (int, error) {
 				decoder.DecodeElement(&se, &ele)
 
 				var idx int
-				_, err := fmt.Sscanf(se.Loc, SITE_PREFIX+"sitemap-%d.xml", &idx)
+				_, err := fmt.Sscanf(se.Loc, sitePrefix+"%d.xml", &idx)
 				if err != nil {
 					fmt.Println("Error parsing sitemap index:", err)
 					return 0, err
@@ -276,7 +275,7 @@ func WriteSitemap(idx int, urls []dto.SitemapURL) error {
 
 func BuildLogURL(log *entity.Log) string {
 	return fmt.Sprintf(
-		ARITCLE_URL_FORMAT,
+		os.Getenv("ARITCLE_URL_FORMAT"),
 		log.LoggedBy[0].Handle,
 		fmt.Sprintf("%s-%X", url.PathEscape(strings.ReplaceAll(log.Title, " ", "-")), log.ID), // Help Me (ID: 1) -> Help-Me-1; (제목)-(아이디 HEX)
 	)
