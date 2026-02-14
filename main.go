@@ -12,12 +12,14 @@ import (
 	"crypto/tls"
 	"database/sql"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/NARUBROWN/spine/pkg/boot"
 	"github.com/joho/godotenv"
+	"github.com/labstack/echo/v4"
+	httpSwagger "github.com/swaggo/http-swagger"
+
+	_ "analog-be/docs"
 
 	"github.com/NARUBROWN/spine"
 	"github.com/uptrace/bun"
@@ -26,6 +28,12 @@ import (
 	"go.uber.org/zap"
 )
 
+// @title AnAlog API
+// @version 1.0.0
+// @description Spine 기반 REST API
+
+// @host localhost:8080
+// @BasePath /api
 func main() {
 	if err := pkg.InitLogger(); err != nil {
 		panic("Failed to initialize logger: " + err.Error())
@@ -111,24 +119,10 @@ func main() {
 	routes.RegisterTopicRoutes(app)
 	routes.RegisterFeedRoutes(app)
 
-	go func() {
-		sigint := make(chan os.Signal, 1)
-		signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
-		<-sigint
-
-		logger.Info("Shutting down server gracefully...")
-
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-
-		if err := db.Close(); err != nil {
-			logger.Error("Error closing database", zap.Error(err))
-		}
-
-		<-shutdownCtx.Done()
-		logger.Info("Server stopped")
-		os.Exit(0)
-	}()
+	app.Transport(func(t any) {
+		e := t.(*echo.Echo)
+		e.GET("/docs/*", echo.WrapHandler(httpSwagger.WrapHandler))
+	})
 
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {
