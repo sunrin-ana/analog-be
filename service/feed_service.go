@@ -34,18 +34,19 @@ func NewFeedService(logService *LogService) *FeedService {
 
 func (f *FeedService) UpdateFeed() {
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	f.mu.Lock()
 	if f.isUpdating {
 		f.needToBeUpdated = true
 		f.mu.Unlock()
+		cancel()
 		return
 	}
 	f.isUpdating = true
 	f.mu.Unlock()
 
 	go func() {
+		defer cancel()
 		for {
 			err := f.UpdateRSSFeed(ctx)
 			if err != nil {
