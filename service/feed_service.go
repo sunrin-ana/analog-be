@@ -46,7 +46,13 @@ func (f *FeedService) UpdateFeed() {
 	f.mu.Unlock()
 
 	go func() {
-		defer cancel()
+		defer func() {
+			f.mu.Lock()
+			f.isUpdating = false
+			f.mu.Unlock()
+			cancel()
+		}()
+
 		for {
 			err := f.UpdateRSSFeed(ctx)
 			if err != nil {
