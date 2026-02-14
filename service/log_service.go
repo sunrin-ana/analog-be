@@ -9,25 +9,22 @@ import (
 	"time"
 
 	"github.com/yuin/goldmark"
-	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 )
 
 type LogService struct {
 	logRepository        *repository.LogRepository
 	commentRepository    *repository.CommentRepository
 	anamericanoService   *AnAmericanoService
-	preRenderThreadGroup *errgroup.Group
+	preRenderThreadGroup *semaphore.Weighted
 }
 
 func NewLogService(logRepository *repository.LogRepository, commentRepository *repository.CommentRepository, anamericanoService *AnAmericanoService) *LogService {
-	g, _ := errgroup.WithContext(context.Background())
-	g.SetLimit(4)
-
 	return &LogService{
 		logRepository:        logRepository,
 		commentRepository:    commentRepository,
 		anamericanoService:   anamericanoService,
-		preRenderThreadGroup: g,
+		preRenderThreadGroup: semaphore.NewWeighted(4),
 	}
 }
 
@@ -132,13 +129,21 @@ func (s *LogService) Update(ctx context.Context, id *entity.ID, req *dto.LogUpda
 	}
 	if req.Content != nil {
 		log.Content = *req.Content
-		s.preRenderThreadGroup.Go(func() error {
-			err := s.PreRender(context.Background(), id)
-			if err != nil {
-				return err
+		go func() {
+			if err := s.preRenderThreadGroup.Acquire(ctx, 1); err != nil {
+				println(err.Error())
 			}
-			return nil
-		})
+
+			defer s.preRenderThreadGroup.Release(1)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			err := s.PreRender(ctx, id)
+			if err != nil {
+				println(err.Error())
+			}
+		}()
 	}
 
 	if req.CoAuthorIDs != nil {
