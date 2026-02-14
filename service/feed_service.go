@@ -100,7 +100,7 @@ func (f *FeedService) UpdateSitemap(log *entity.Log) error {
 		err = os.Mkdir("./sitemap", 0644)
 
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		err := UpdateIndexMap(0)
