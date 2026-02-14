@@ -194,6 +194,8 @@ func (s *LogService) BuildDescription(content string) string {
 	var description string
 	if len(pcontentRune) > 100 {
 		description = string(pcontentRune[:97]) + "..."
+	} else {
+		description = *pcontent
 	}
 
 	return description
