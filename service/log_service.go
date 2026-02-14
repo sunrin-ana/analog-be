@@ -118,7 +118,7 @@ func (s *LogService) Create(ctx context.Context, req *dto.LogCreateRequest, auth
 		}
 	}
 
-	s.feedService.UpdateFeed(ctx)
+	s.feedService.UpdateFeed()
 
 	return log, nil
 }
