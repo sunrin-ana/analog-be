@@ -13,18 +13,18 @@ import (
 )
 
 type LogService struct {
-	logRepository        *repository.LogRepository
-	commentRepository    *repository.CommentRepository
-	anamericanoService   *AnAmericanoService
-	preRenderThreadGroup *semaphore.Weighted
+	logRepository      *repository.LogRepository
+	commentRepository  *repository.CommentRepository
+	anamericanoService *AnAmericanoService
+	prerenderJobs      *semaphore.Weighted
 }
 
 func NewLogService(logRepository *repository.LogRepository, commentRepository *repository.CommentRepository, anamericanoService *AnAmericanoService) *LogService {
 	return &LogService{
-		logRepository:        logRepository,
-		commentRepository:    commentRepository,
-		anamericanoService:   anamericanoService,
-		preRenderThreadGroup: semaphore.NewWeighted(4),
+		logRepository:      logRepository,
+		commentRepository:  commentRepository,
+		anamericanoService: anamericanoService,
+		prerenderJobs:      semaphore.NewWeighted(4),
 	}
 }
 
@@ -127,19 +127,20 @@ func (s *LogService) Update(ctx context.Context, id *entity.ID, req *dto.LogUpda
 	if req.Generations != nil {
 		log.Generations = *req.Generations
 	}
+
 	if req.Content != nil {
 		log.Content = *req.Content
 		go func() {
-			if err := s.preRenderThreadGroup.Acquire(ctx, 1); err != nil {
-				println(err.Error())
-			}
-
-			defer s.preRenderThreadGroup.Release(1)
-
-			ctx, cancel := context.WithCancel(context.Background())
+			gctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			err := s.PreRender(ctx, id)
+			if err := s.prerenderJobs.Acquire(gctx, 1); err != nil {
+				return
+			}
+
+			defer s.prerenderJobs.Release(1)
+
+			err := s.PreRender(gctx, id)
 			if err != nil {
 				println(err.Error())
 			}
