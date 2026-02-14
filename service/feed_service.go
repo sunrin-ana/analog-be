@@ -50,11 +50,11 @@ func (f *FeedService) UpdateFeed() {
 		for {
 			err := f.UpdateRSSFeed(ctx)
 			if err != nil {
-				return
+				println(err.Error())
 			}
 			err = f.UpdateSitemap(nil)
 			if err != nil {
-				return
+				println(err.Error())
 			}
 
 			f.mu.Lock()
