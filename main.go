@@ -11,14 +11,16 @@ import (
 	"context"
 	"crypto/tls"
 	"database/sql"
+	"os"
+	"time"
+
 	"github.com/NARUBROWN/spine/pkg/boot"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	httpSwagger "github.com/swaggo/http-swagger"
-	"os"
-	"time"
 
 	_ "analog-be/docs"
+
 	"github.com/NARUBROWN/spine"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
@@ -87,6 +89,7 @@ func main() {
 		service.NewCommentService,
 		service.NewTopicService,
 		service.NewAnAmericanoService,
+		service.NewFeedService,
 
 		// 컨트롤러
 		controller.NewHealthController,
@@ -94,6 +97,7 @@ func main() {
 		controller.NewUserController,
 		controller.NewAuthController,
 		controller.NewTopicController,
+		controller.NewFeedController,
 
 		// 인터셉터
 		interceptor.NewTxInterceptor,
@@ -113,6 +117,7 @@ func main() {
 	routes.RegisterUserRoutes(app)
 	routes.RegisterAuthRoutes(app)
 	routes.RegisterTopicRoutes(app)
+	routes.RegisterFeedRoutes(app)
 
 	app.Transport(func(t any) {
 		e := t.(*echo.Echo)

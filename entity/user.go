@@ -7,6 +7,7 @@ import (
 type User struct {
 	ID           ID        `bun:"id,pk"` // An-Account와 아이디를 공유합니다
 	Name         string    `bun:"name"`
+	Handle       string    `bun:"handle,unique"` // @handle
 	ProfileImage string    `bun:"profile_image"`
 	JoinedAt     time.Time `bun:"joined_at"`
 	PartOf       string    `bun:"part_of"`

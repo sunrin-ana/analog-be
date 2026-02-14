@@ -8,6 +8,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/huantt/plaintext-extractor"
+
 	"github.com/yuin/goldmark"
 	"golang.org/x/sync/semaphore"
 )
@@ -16,6 +18,8 @@ type LogService struct {
 	logRepository      *repository.LogRepository
 	commentRepository  *repository.CommentRepository
 	anamericanoService *AnAmericanoService
+	feedService        *FeedService
+	plainExtractor     *plaintext.Extractor
 	prerenderJobs      *semaphore.Weighted
 }
 
@@ -24,6 +28,7 @@ func NewLogService(logRepository *repository.LogRepository, commentRepository *r
 		logRepository:      logRepository,
 		commentRepository:  commentRepository,
 		anamericanoService: anamericanoService,
+		plainExtractor:     plaintext.NewMarkdownExtractor(),
 		prerenderJobs:      semaphore.NewWeighted(4),
 	}
 }
@@ -84,6 +89,7 @@ func (s *LogService) Create(ctx context.Context, req *dto.LogCreateRequest, auth
 
 	log := &entity.Log{
 		Title:       req.Title,
+		Description: s.BuildDescription(req.Content),
 		Generations: req.Generations,
 		Content:     req.Content,
 		CreatedAt:   now,
@@ -112,6 +118,8 @@ func (s *LogService) Create(ctx context.Context, req *dto.LogCreateRequest, auth
 		}
 	}
 
+	s.feedService.UpdateFeed()
+
 	return log, nil
 }
 
@@ -130,6 +138,8 @@ func (s *LogService) Update(ctx context.Context, id *entity.ID, req *dto.LogUpda
 
 	if req.Content != nil {
 		log.Content = *req.Content
+		log.Description = s.BuildDescription(*req.Content)
+
 		go func() {
 			gctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -172,6 +182,23 @@ func (s *LogService) Delete(ctx context.Context, id *entity.ID) error {
 	}
 
 	return s.logRepository.Delete(ctx, id)
+}
+
+func (s *LogService) BuildDescription(content string) string {
+	pcontent, err := s.plainExtractor.PlainText(content)
+	if err != nil {
+		pcontent = &content
+	}
+
+	pcontentRune := []rune(*pcontent)
+	var description string
+	if len(pcontentRune) > 100 {
+		description = string(pcontentRune[:97]) + "..."
+	} else {
+		description = *pcontent
+	}
+
+	return description
 }
 
 func (s *LogService) PreRender(ctx context.Context, id *entity.ID) error {
