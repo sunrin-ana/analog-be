@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -20,45 +21,51 @@ const RSS_FEED_SUFFIX = "</channel></rss>"
 type FeedService struct {
 	logService      *LogService
 	rssFeed         string
+	mu              sync.Mutex
 	isUpdating      bool
 	needToBeUpdated bool
 }
 
 func NewFeedService(logService *LogService) *FeedService {
 	fs := &FeedService{logService: logService, rssFeed: "", isUpdating: false, needToBeUpdated: false}
-	go func() {
-		err := fs.UpdateFeed(context.Background())
-		if err != nil {
-			fmt.Println(err)
-		}
-	}()
+	fs.UpdateFeed()
 	return fs
 }
 
-func (f *FeedService) UpdateFeed(ctx context.Context) error {
+func (f *FeedService) UpdateFeed() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	f.mu.Lock()
 	if f.isUpdating {
 		f.needToBeUpdated = true
-		return nil
+		f.mu.Unlock()
+		return
 	}
-
-	f.needToBeUpdated = false
 	f.isUpdating = true
+	f.mu.Unlock()
 
-	err := f.UpdateRSSFeed(ctx)
-	if err != nil {
-		return err
-	}
-	err = f.UpdateSitemap(nil)
-	if err != nil {
-		return err
-	}
+	go func() {
+		for {
+			err := f.UpdateRSSFeed(ctx)
+			if err != nil {
+				return
+			}
+			err = f.UpdateSitemap(nil)
+			if err != nil {
+				return
+			}
 
-	f.isUpdating = false
-	if f.needToBeUpdated {
-		err = f.UpdateFeed(ctx)
-	}
-
-	return nil
+			f.mu.Lock()
+			if !f.needToBeUpdated {
+				f.isUpdating = false
+				f.mu.Unlock()
+				return
+			}
+			f.needToBeUpdated = false
+			f.mu.Unlock()
+		}
+	}()
 }
 
 func (f *FeedService) UpdateRSSFeed(ctx context.Context) error {
