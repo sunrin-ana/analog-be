@@ -12,6 +12,7 @@ type Log struct {
 
 	ID          ID        `bun:"id,pk,autoincrement"`
 	Title       string    `bun:"title"`
+	Description string    `bun:"description"`
 	Topics      []*Topic  `bun:"m2m:log_to_topics,join:Log=Topic"`
 	Generations []uint16  `bun:"generations,array"`
 	Content     string    `bun:"content"`
