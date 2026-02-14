@@ -133,7 +133,7 @@ func (s *LogService) Update(ctx context.Context, id *entity.ID, req *dto.LogUpda
 	if req.Content != nil {
 		log.Content = *req.Content
 		s.preRenderThreadGroup.Go(func() error {
-			err := s.PreRender(ctx, id)
+			err := s.PreRender(context.Background(), id)
 			if err != nil {
 				return err
 			}
