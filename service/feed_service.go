@@ -1,6 +1,7 @@
 package service
 
 import (
+	"analog-be/dto"
 	"analog-be/entity"
 	"context"
 	"encoding/xml"
@@ -24,27 +25,6 @@ type FeedService struct {
 	rssFeed         string
 	isUpdating      bool
 	needToBeUpdated bool
-}
-
-type SitemapIndex struct {
-	XMLName xml.Name         `xml:"sitemapindex"`
-	Sitemap []SitemapElement `xml:"sitemap"`
-}
-
-type SitemapElement struct {
-	XMLName xml.Name `xml:"sitemap"`
-	Loc     string   `xml:"loc"`
-	Lastmod string   `xml:"lastmod"`
-}
-
-type SitemapFile struct {
-	XMLName xml.Name     `xml:"urlset"`
-	Urls    []SitemapURL `xml:"url"`
-}
-
-type SitemapURL struct {
-	XMLName xml.Name `xml:"url"`
-	Loc     string   `xml:"loc"`
 }
 
 func NewFeedService(logService *LogService) *FeedService {
@@ -153,7 +133,7 @@ func (f *FeedService) UpdateSitemap(log *entity.Log) error {
 	}
 
 	// 사이트맵 저장
-	err = WriteSitemap(idx, []SitemapURL{{Loc: BuildLogURL(log)}})
+	err = WriteSitemap(idx, []dto.SitemapURL{{Loc: BuildLogURL(log)}})
 	if err != nil {
 		return err
 	}
@@ -179,7 +159,7 @@ func UpdateIndexMap(idx int) error {
 	enc := xml.NewEncoder(file)
 
 	for i := 0; i < idx; i++ {
-		enc.Encode(SitemapElement{Loc: fmt.Sprintf(SITE_PREFIX+"sitemap-%d.xml", i), Lastmod: time.Now().Format(time.RFC1123Z)})
+		enc.Encode(dto.SitemapElement{Loc: fmt.Sprintf(SITE_PREFIX+"sitemap-%d.xml", i), Lastmod: time.Now().Format(time.RFC1123Z)})
 	}
 	enc.Flush()
 
@@ -209,7 +189,7 @@ func GetLatestSitemap() (int, error) {
 		case xml.StartElement:
 			inElement = ele.Name.Local
 			if inElement == "sitemap" {
-				var se SitemapElement
+				var se dto.SitemapElement
 				decoder.DecodeElement(&se, &ele)
 
 				var idx int
@@ -268,7 +248,7 @@ func IsSitemapWritable(idx int) (bool, error) {
 	return true, nil
 }
 
-func WriteSitemap(idx int, urls []SitemapURL) error {
+func WriteSitemap(idx int, urls []dto.SitemapURL) error {
 	f, err := os.Open(fmt.Sprintf("./sitemap/sitemap-%d.xml", idx))
 	if err != nil && errors.Is(err, os.ErrNotExist) {
 		f = os.NewFile(3, fmt.Sprintf("./sitemap/sitemap-%d.xml", idx))
