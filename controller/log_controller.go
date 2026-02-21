@@ -62,6 +62,17 @@ func (c *LogController) GetListOfLog(ctx context.Context, page query.Pagination)
 	}
 }
 
+// GetListOfTopicLog gets a paginated list of logs for a specific topic.
+// @Summary      GetListOfTopicLog
+// @Description  Get a paginated list of logs for a specific topic.
+// @Tags         Log
+// @Produce      json
+// @Param        topicId path int true "Topic ID"
+// @Param        page query int false "Page number"
+// @Param        size query int false "Page size"
+// @Success      200 {object} dto.PaginatedResult[dto.LogResponse]
+// @Failure      404 "Not Found"
+// @Router       /logs/topic/list/{topicId} [get]
 func (c *LogController) GetListOfTopicLog(ctx context.Context, topicID path.Int, page query.Pagination) httpx.Response[dto.PaginatedResult[dto.LogResponse]] {
 	paginatedResult, err := c.logService.GetListByTopicID(ctx, &topicID.Value, page.Size, page.Page)
 	if err != nil {
@@ -87,6 +98,17 @@ func (c *LogController) GetListOfTopicLog(ctx context.Context, topicID path.Int,
 	}
 }
 
+// GetListOfGenerationLog gets a paginated list of logs for a specific generation.
+// @Summary      GetListOfGenerationLog
+// @Description  Get a paginated list of logs for a specific generation.
+// @Tags         Log
+// @Produce      json
+// @Param        generation path int true "Generation"
+// @Param        page query int false "Page number"
+// @Param        size query int false "Page size"
+// @Success      200 {object} dto.PaginatedResult[dto.LogResponse]
+// @Failure      404 "Not Found"
+// @Router       /logs/generation/list/{generation} [get]
 func (c *LogController) GetListOfGenerationLog(ctx context.Context, generation path.Int, page query.Pagination) httpx.Response[dto.PaginatedResult[dto.LogResponse]] {
 	paginatedResult, err := c.logService.GetListByGeneration(ctx, uint16(generation.Value), page.Size, page.Page)
 	if err != nil {

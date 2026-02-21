@@ -421,6 +421,50 @@ const docTemplate = `{
                 }
             }
         },
+        "/logs/generation/list/{generation}": {
+            "get": {
+                "description": "Get a paginated list of logs for a specific generation.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Log"
+                ],
+                "summary": "GetListOfGenerationLog",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Generation",
+                        "name": "generation",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.PaginatedResult-dto_LogResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
+            }
+        },
         "/logs/search/list": {
             "get": {
                 "description": "Search for logs by a query string.",
@@ -437,6 +481,50 @@ const docTemplate = `{
                         "description": "Search query",
                         "name": "q",
                         "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.PaginatedResult-dto_LogResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
+            }
+        },
+        "/logs/topic/list/{topicId}": {
+            "get": {
+                "description": "Get a paginated list of logs for a specific topic.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Log"
+                ],
+                "summary": "GetListOfTopicLog",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Topic ID",
+                        "name": "topicId",
+                        "in": "path",
                         "required": true
                     },
                     {
