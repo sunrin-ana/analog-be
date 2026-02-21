@@ -63,6 +63,34 @@ func (s *LogService) GetList(ctx context.Context, limit int, offset int) (*dto.P
 	}, nil
 }
 
+func (s *LogService) GetListByTopicID(ctx context.Context, topicID *entity.ID, limit int, offset int) (*dto.PaginatedResult[*entity.Log], error) {
+	logs, total, err := s.logRepository.FindAllByTopicID(ctx, topicID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.PaginatedResult[*entity.Log]{
+		Items:  logs,
+		Total:  *total,
+		Limit:  limit,
+		Offset: offset,
+	}, nil
+}
+
+func (s *LogService) GetListByGeneration(ctx context.Context, generation uint16, limit int, offset int) (*dto.PaginatedResult[*entity.Log], error) {
+	logs, total, err := s.logRepository.FindAllByGeneration(ctx, generation, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.PaginatedResult[*entity.Log]{
+		Items:  logs,
+		Total:  *total,
+		Limit:  limit,
+		Offset: offset,
+	}, nil
+}
+
 func (s *LogService) Search(ctx context.Context, query string, limit int, offset int) (*dto.PaginatedResult[*entity.Log], error) {
 	if limit <= 0 {
 		limit = 20

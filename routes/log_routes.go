@@ -12,6 +12,8 @@ import (
 func RegisterLogRoutes(app spine.App) {
 	app.Route("GET", "/logs", (*controller.LogController).GetListOfLog)
 	app.Route("GET", "/logs/:id", (*controller.LogController).GetLog)
+	app.Route("GET", "/logs/topic/list/:topicId", (*controller.LogController).GetListOfTopicLog)
+	app.Route("GET", "/logs/generation/list/:generation", (*controller.LogController).GetListOfGenerationLog)
 	app.Route("GET", "/logs/search/list", (*controller.LogController).SearchLogs)
 
 	app.Route("POST", "/logs", (*controller.LogController).CreateLog, route.WithInterceptors(&interceptor.AuthInterceptor{}))
