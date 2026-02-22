@@ -7,17 +7,28 @@ import (
 	"github.com/uptrace/bun"
 )
 
-type LogRepository struct {
+type LogRepository interface {
+	FindByID(ctx context.Context, id *entity.ID) (*entity.Log, error)
+	FindAll(ctx context.Context, limit int, offset int) ([]*entity.Log, *int, error)
+	FindAllByTopicID(ctx context.Context, topicID *entity.ID, limit int, offset int) ([]*entity.Log, *int, error)
+	FindAllByGeneration(ctx context.Context, generation uint16, limit, offset int) ([]*entity.Log, *int, error)
+	Search(ctx context.Context, query string, limit int, offset int) ([]*entity.Log, *int, error)
+	Create(ctx context.Context, log *entity.Log, topicIDs, authorIDs *[]entity.ID) (*entity.Log, error)
+	Update(ctx context.Context, log *entity.Log, topicIDs, authorIDs *[]entity.ID) (*entity.Log, error)
+	Delete(ctx context.Context, id *entity.ID) error
+}
+
+type LogRepositoryImpl struct {
 	db bun.IDB
 }
 
-func NewLogRepository(db bun.IDB) *LogRepository {
-	return &LogRepository{
+func NewLogRepository(db bun.IDB) LogRepository {
+	return &LogRepositoryImpl{
 		db: db,
 	}
 }
 
-func (r *LogRepository) FindByID(ctx context.Context, id *entity.ID) (*entity.Log, error) {
+func (r *LogRepositoryImpl) FindByID(ctx context.Context, id *entity.ID) (*entity.Log, error) {
 	log := new(entity.Log)
 
 	err := r.db.NewSelect().
@@ -35,7 +46,7 @@ func (r *LogRepository) FindByID(ctx context.Context, id *entity.ID) (*entity.Lo
 	return log, nil
 }
 
-func (r *LogRepository) FindAll(ctx context.Context, limit int, offset int) ([]*entity.Log, *int, error) {
+func (r *LogRepositoryImpl) FindAll(ctx context.Context, limit int, offset int) ([]*entity.Log, *int, error) {
 	var logs []*entity.Log
 
 	count, err := r.db.NewSelect().
@@ -52,7 +63,7 @@ func (r *LogRepository) FindAll(ctx context.Context, limit int, offset int) ([]*
 	return logs, &count, nil
 }
 
-func (r *LogRepository) FindAllByTopicID(ctx context.Context, topicID *entity.ID, limit int, offset int) ([]*entity.Log, *int, error) {
+func (r *LogRepositoryImpl) FindAllByTopicID(ctx context.Context, topicID *entity.ID, limit int, offset int) ([]*entity.Log, *int, error) {
 	var logs []*entity.Log
 
 	count, err := r.db.NewSelect().
@@ -71,7 +82,7 @@ func (r *LogRepository) FindAllByTopicID(ctx context.Context, topicID *entity.ID
 	return logs, &count, nil
 }
 
-func (r *LogRepository) FindAllByGeneration(ctx context.Context, generation uint16, limit, offset int) ([]*entity.Log, *int, error) {
+func (r *LogRepositoryImpl) FindAllByGeneration(ctx context.Context, generation uint16, limit, offset int) ([]*entity.Log, *int, error) {
 	var logs []*entity.Log
 
 	count, err := r.db.NewSelect().
@@ -89,7 +100,7 @@ func (r *LogRepository) FindAllByGeneration(ctx context.Context, generation uint
 	return logs, &count, nil
 }
 
-func (r *LogRepository) Search(ctx context.Context, query string, limit int, offset int) ([]*entity.Log, *int, error) {
+func (r *LogRepositoryImpl) Search(ctx context.Context, query string, limit int, offset int) ([]*entity.Log, *int, error) {
 	var logs []*entity.Log
 
 	count, err := r.db.NewSelect().
@@ -107,7 +118,7 @@ func (r *LogRepository) Search(ctx context.Context, query string, limit int, off
 	return logs, &count, nil
 }
 
-func (r *LogRepository) Create(ctx context.Context, log *entity.Log, topicIDs, authorIDs *[]entity.ID) (*entity.Log, error) {
+func (r *LogRepositoryImpl) Create(ctx context.Context, log *entity.Log, topicIDs, authorIDs *[]entity.ID) (*entity.Log, error) {
 	err := r.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		if _, err := tx.NewInsert().Model(log).Exec(ctx); err != nil {
 			return err
@@ -149,7 +160,7 @@ func (r *LogRepository) Create(ctx context.Context, log *entity.Log, topicIDs, a
 	return log, err
 }
 
-func (r *LogRepository) Update(ctx context.Context, log *entity.Log, topicIDs, authorIDs *[]entity.ID) (*entity.Log, error) {
+func (r *LogRepositoryImpl) Update(ctx context.Context, log *entity.Log, topicIDs, authorIDs *[]entity.ID) (*entity.Log, error) {
 	err := r.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		if _, err := tx.NewUpdate().Model(log).WherePK().Exec(ctx); err != nil {
 			return err
@@ -201,7 +212,7 @@ func (r *LogRepository) Update(ctx context.Context, log *entity.Log, topicIDs, a
 	return log, err
 }
 
-func (r *LogRepository) Delete(ctx context.Context, id *entity.ID) error {
+func (r *LogRepositoryImpl) Delete(ctx context.Context, id *entity.ID) error {
 	_, err := r.db.NewDelete().
 		Model((*entity.Log)(nil)).
 		Where("id = ?", id).

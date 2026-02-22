@@ -10,10 +10,10 @@ import (
 )
 
 type FeedController struct {
-	service *service.FeedService
+	service service.FeedService
 }
 
-func NewFeedController(service *service.FeedService) *FeedController {
+func NewFeedController(service service.FeedService) *FeedController {
 	return &FeedController{service: service}
 }
 

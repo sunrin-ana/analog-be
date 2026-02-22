@@ -10,11 +10,11 @@ import (
 )
 
 type AuthInterceptor struct {
-	sessionRepo *repository.SessionRepository
+	sessionRepo repository.SessionRepository
 	logger      *zap.Logger
 }
 
-func NewAuthInterceptor(sessionRepo *repository.SessionRepository, logger *zap.Logger) *AuthInterceptor {
+func NewAuthInterceptor(sessionRepo repository.SessionRepository, logger *zap.Logger) *AuthInterceptor {
 	return &AuthInterceptor{
 		sessionRepo: sessionRepo,
 		logger:      logger,

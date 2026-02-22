@@ -18,21 +18,30 @@ import (
 const RSS_FEED_PREFIX = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><rss version=\"2.0\"><channel><title>Analog</title><link>https://log.ana.st/</link><description>Latest articles from Analog</description><copyright>2026 Application and Architecture Club, Sunrin Internet High School</copyright><ttl>60</ttl>"
 const RSS_FEED_SUFFIX = "</channel></rss>"
 
-type FeedService struct {
-	logService      *LogService
+type FeedService interface {
+	UpdateFeed()
+	UpdateRSSFeed(ctx context.Context) error
+	GetRSSFeed() string
+	GenerateRSSFeed(ctx context.Context) (string, error)
+	UpdateSitemap(log *entity.Log) error
+	GetSitemap(name string) string
+}
+
+type FeedServiceImpl struct {
+	logService      LogService
 	rssFeed         string
 	mu              sync.Mutex
 	isUpdating      bool
 	needToBeUpdated bool
 }
 
-func NewFeedService(logService *LogService) *FeedService {
-	fs := &FeedService{logService: logService, rssFeed: "", isUpdating: false, needToBeUpdated: false}
+func NewFeedService(logService LogService) FeedService {
+	fs := &FeedServiceImpl{logService: logService, rssFeed: "", isUpdating: false, needToBeUpdated: false}
 	fs.UpdateFeed()
 	return fs
 }
 
-func (f *FeedService) UpdateFeed() {
+func (f *FeedServiceImpl) UpdateFeed() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	f.mu.Lock()
@@ -75,7 +84,7 @@ func (f *FeedService) UpdateFeed() {
 	}()
 }
 
-func (f *FeedService) UpdateRSSFeed(ctx context.Context) error {
+func (f *FeedServiceImpl) UpdateRSSFeed(ctx context.Context) error {
 	rssFeed, err := f.GenerateRSSFeed(ctx)
 	if err != nil {
 		return err
@@ -85,11 +94,11 @@ func (f *FeedService) UpdateRSSFeed(ctx context.Context) error {
 	return nil
 }
 
-func (f *FeedService) GetRSSFeed() string {
+func (f *FeedServiceImpl) GetRSSFeed() string {
 	return f.rssFeed
 }
 
-func (f *FeedService) GenerateRSSFeed(ctx context.Context) (string, error) {
+func (f *FeedServiceImpl) GenerateRSSFeed(ctx context.Context) (string, error) {
 	list, err := f.logService.GetList(ctx, 20, 0)
 	if err != nil {
 		return "", err
@@ -108,7 +117,7 @@ func (f *FeedService) GenerateRSSFeed(ctx context.Context) (string, error) {
 	return sb.String(), nil
 }
 
-func (f *FeedService) UpdateSitemap(log *entity.Log) error {
+func (f *FeedServiceImpl) UpdateSitemap(log *entity.Log) error {
 	info, err := os.Stat("./sitemap")
 	if (err != nil && errors.Is(err, os.ErrNotExist)) || !info.IsDir() {
 		err = os.Mkdir("./sitemap", 0644)
@@ -152,7 +161,7 @@ func (f *FeedService) UpdateSitemap(log *entity.Log) error {
 	return nil
 }
 
-func (f *FeedService) GetSitemap(name string) string {
+func (f *FeedServiceImpl) GetSitemap(name string) string {
 	file, err := os.ReadFile("./sitemap/" + name) // TODO: 해당 로직은 매우 위험함. 향후 Spine에서 공식적으로 static resource를 지원하게 되면 해당 로직을 대체할 것
 	if err != nil {
 		return ""

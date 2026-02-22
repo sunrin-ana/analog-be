@@ -7,17 +7,26 @@ import (
 	"github.com/uptrace/bun"
 )
 
-type UserRepository struct {
+type UserRepository interface {
+	FindByID(ctx context.Context, id *entity.ID) (*entity.User, error)
+	Create(ctx context.Context, user *entity.User) (*entity.User, error)
+	Update(ctx context.Context, user *entity.User) (*entity.User, error)
+	Delete(ctx context.Context, id *entity.ID) error
+	FindAll(ctx context.Context, limit, offset int) ([]*entity.User, *int, error)
+	Search(ctx context.Context, query string, limit, offset int) ([]*entity.User, *int, error)
+}
+
+type UserRepositoryImpl struct {
 	db bun.IDB
 }
 
-func NewUserRepository(db bun.IDB) *UserRepository {
-	return &UserRepository{
+func NewUserRepository(db bun.IDB) UserRepository {
+	return &UserRepositoryImpl{
 		db: db,
 	}
 }
 
-func (r *UserRepository) FindByID(ctx context.Context, id *entity.ID) (*entity.User, error) {
+func (r *UserRepositoryImpl) FindByID(ctx context.Context, id *entity.ID) (*entity.User, error) {
 	user := new(entity.User)
 
 	err := r.db.NewSelect().
@@ -33,14 +42,14 @@ func (r *UserRepository) FindByID(ctx context.Context, id *entity.ID) (*entity.U
 	return user, nil
 }
 
-func (r *UserRepository) Create(ctx context.Context, user *entity.User) (*entity.User, error) {
+func (r *UserRepositoryImpl) Create(ctx context.Context, user *entity.User) (*entity.User, error) {
 	_, err := r.db.NewInsert().
 		Model(user).
 		Exec(ctx)
 	return user, err
 }
 
-func (r *UserRepository) Update(ctx context.Context, user *entity.User) (*entity.User, error) {
+func (r *UserRepositoryImpl) Update(ctx context.Context, user *entity.User) (*entity.User, error) {
 	_, err := r.db.NewUpdate().
 		Model(user).
 		Where("id = ?", user.ID).
@@ -48,7 +57,7 @@ func (r *UserRepository) Update(ctx context.Context, user *entity.User) (*entity
 	return user, err
 }
 
-func (r *UserRepository) Delete(ctx context.Context, id *entity.ID) error {
+func (r *UserRepositoryImpl) Delete(ctx context.Context, id *entity.ID) error {
 	_, err := r.db.NewDelete().
 		Model((*entity.User)(nil)).
 		Where("id = ?", id).
@@ -56,7 +65,7 @@ func (r *UserRepository) Delete(ctx context.Context, id *entity.ID) error {
 	return err
 }
 
-func (r *UserRepository) FindAll(ctx context.Context, limit, offset int) ([]*entity.User, *int, error) {
+func (r *UserRepositoryImpl) FindAll(ctx context.Context, limit, offset int) ([]*entity.User, *int, error) {
 	var users []*entity.User
 
 	count, err := r.db.NewSelect().
@@ -72,7 +81,7 @@ func (r *UserRepository) FindAll(ctx context.Context, limit, offset int) ([]*ent
 	return users, &count, nil
 }
 
-func (r *UserRepository) Search(ctx context.Context, query string, limit, offset int) ([]*entity.User, *int, error) {
+func (r *UserRepositoryImpl) Search(ctx context.Context, query string, limit, offset int) ([]*entity.User, *int, error) {
 	var users []*entity.User
 
 	count, err := r.db.NewSelect().

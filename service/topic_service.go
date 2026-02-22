@@ -6,18 +6,25 @@ import (
 	"context"
 )
 
-type TopicService struct {
-	topicRepository *repository.TopicRepository
+type TopicService interface {
+	Create(ctx context.Context, topic *entity.Topic) (*entity.Topic, error)
+	FindAll(ctx context.Context, limit int, offset int) ([]*entity.Topic, error)
+	Search(ctx context.Context, query string, limit int, offset int) ([]*entity.Topic, error)
+	Delete(ctx context.Context, id *entity.ID) error
 }
 
-func NewTopicService(topicRepository *repository.TopicRepository) *TopicService {
-	return &TopicService{topicRepository: topicRepository}
+type TopicServiceImpl struct {
+	topicRepository repository.TopicRepository
 }
 
-func (s *TopicService) Create(ctx context.Context, topic *entity.Topic) (*entity.Topic, error) {
+func NewTopicService(topicRepository repository.TopicRepository) TopicService {
+	return &TopicServiceImpl{topicRepository: topicRepository}
+}
+
+func (s *TopicServiceImpl) Create(ctx context.Context, topic *entity.Topic) (*entity.Topic, error) {
 	return s.topicRepository.Create(ctx, topic)
 }
-func (s *TopicService) FindAll(ctx context.Context, limit int, offset int) ([]*entity.Topic, error) {
+func (s *TopicServiceImpl) FindAll(ctx context.Context, limit int, offset int) ([]*entity.Topic, error) {
 	topics, err := s.topicRepository.FindAll(ctx, limit, offset)
 	if err != nil {
 		return nil, err
@@ -25,7 +32,7 @@ func (s *TopicService) FindAll(ctx context.Context, limit int, offset int) ([]*e
 
 	return topics, nil
 }
-func (s *TopicService) Search(ctx context.Context, query string, limit int, offset int) ([]*entity.Topic, error) {
+func (s *TopicServiceImpl) Search(ctx context.Context, query string, limit int, offset int) ([]*entity.Topic, error) {
 	topics, err := s.topicRepository.Search(ctx, query, limit, offset)
 	if err != nil {
 		return nil, err
@@ -33,6 +40,6 @@ func (s *TopicService) Search(ctx context.Context, query string, limit int, offs
 
 	return topics, nil
 }
-func (s *TopicService) Delete(ctx context.Context, id *entity.ID) error {
+func (s *TopicServiceImpl) Delete(ctx context.Context, id *entity.ID) error {
 	return s.topicRepository.Delete(ctx, id)
 }

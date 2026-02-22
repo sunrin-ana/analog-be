@@ -8,24 +8,31 @@ import (
 	"github.com/uptrace/bun"
 )
 
-type OAuthStateRepository struct {
+type OAuthStateRepository interface {
+	Create(ctx context.Context, state *entity.OAuthState) error
+	FindByState(ctx context.Context, state string) (*entity.OAuthState, error)
+	Delete(ctx context.Context, state string) error
+	DeleteExpired(ctx context.Context) error
+}
+
+type OAuthStateRepositoryImpl struct {
 	db bun.IDB
 }
 
-func NewOAuthStateRepository(db bun.IDB) *OAuthStateRepository {
-	return &OAuthStateRepository{
+func NewOAuthStateRepository(db bun.IDB) OAuthStateRepository {
+	return &OAuthStateRepositoryImpl{
 		db: db,
 	}
 }
 
-func (r *OAuthStateRepository) Create(ctx context.Context, state *entity.OAuthState) error {
+func (r *OAuthStateRepositoryImpl) Create(ctx context.Context, state *entity.OAuthState) error {
 	_, err := r.db.NewInsert().
 		Model(state).
 		Exec(ctx)
 	return err
 }
 
-func (r *OAuthStateRepository) FindByState(ctx context.Context, state string) (*entity.OAuthState, error) {
+func (r *OAuthStateRepositoryImpl) FindByState(ctx context.Context, state string) (*entity.OAuthState, error) {
 	oauthState := new(entity.OAuthState)
 	err := r.db.NewSelect().
 		Model(oauthState).
@@ -38,7 +45,7 @@ func (r *OAuthStateRepository) FindByState(ctx context.Context, state string) (*
 	return oauthState, nil
 }
 
-func (r *OAuthStateRepository) Delete(ctx context.Context, state string) error {
+func (r *OAuthStateRepositoryImpl) Delete(ctx context.Context, state string) error {
 	_, err := r.db.NewDelete().
 		Model((*entity.OAuthState)(nil)).
 		Where("state = ?", state).
@@ -46,7 +53,7 @@ func (r *OAuthStateRepository) Delete(ctx context.Context, state string) error {
 	return err
 }
 
-func (r *OAuthStateRepository) DeleteExpired(ctx context.Context) error {
+func (r *OAuthStateRepositoryImpl) DeleteExpired(ctx context.Context) error {
 	_, err := r.db.NewDelete().
 		Model((*entity.OAuthState)(nil)).
 		Where("expires_at < ?", time.Now()).
@@ -54,24 +61,32 @@ func (r *OAuthStateRepository) DeleteExpired(ctx context.Context) error {
 	return err
 }
 
-type SessionRepository struct {
+type SessionRepository interface {
+	Create(ctx context.Context, session *entity.Session) error
+	FindByToken(ctx context.Context, token string) (*entity.Session, error)
+	Delete(ctx context.Context, token string) error
+	DeleteByUserID(ctx context.Context, userID int64) error
+	DeleteExpired(ctx context.Context) error
+}
+
+type SessionRepositoryImpl struct {
 	db bun.IDB
 }
 
-func NewSessionRepository(db bun.IDB) *SessionRepository {
-	return &SessionRepository{
+func NewSessionRepository(db bun.IDB) SessionRepository {
+	return &SessionRepositoryImpl{
 		db: db,
 	}
 }
 
-func (r *SessionRepository) Create(ctx context.Context, session *entity.Session) error {
+func (r *SessionRepositoryImpl) Create(ctx context.Context, session *entity.Session) error {
 	_, err := r.db.NewInsert().
 		Model(session).
 		Exec(ctx)
 	return err
 }
 
-func (r *SessionRepository) FindByToken(ctx context.Context, token string) (*entity.Session, error) {
+func (r *SessionRepositoryImpl) FindByToken(ctx context.Context, token string) (*entity.Session, error) {
 	session := new(entity.Session)
 	err := r.db.NewSelect().
 		Model(session).
@@ -85,7 +100,7 @@ func (r *SessionRepository) FindByToken(ctx context.Context, token string) (*ent
 	return session, nil
 }
 
-func (r *SessionRepository) Delete(ctx context.Context, token string) error {
+func (r *SessionRepositoryImpl) Delete(ctx context.Context, token string) error {
 	_, err := r.db.NewDelete().
 		Model((*entity.Session)(nil)).
 		Where("session_token = ?", token).
@@ -93,7 +108,7 @@ func (r *SessionRepository) Delete(ctx context.Context, token string) error {
 	return err
 }
 
-func (r *SessionRepository) DeleteByUserID(ctx context.Context, userID int64) error {
+func (r *SessionRepositoryImpl) DeleteByUserID(ctx context.Context, userID int64) error {
 	_, err := r.db.NewDelete().
 		Model((*entity.Session)(nil)).
 		Where("user_id = ?", userID).
@@ -101,7 +116,7 @@ func (r *SessionRepository) DeleteByUserID(ctx context.Context, userID int64) er
 	return err
 }
 
-func (r *SessionRepository) DeleteExpired(ctx context.Context) error {
+func (r *SessionRepositoryImpl) DeleteExpired(ctx context.Context) error {
 	_, err := r.db.NewDelete().
 		Model((*entity.Session)(nil)).
 		Where("expires_at < ?", time.Now().UTC()).

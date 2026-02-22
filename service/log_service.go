@@ -14,26 +14,40 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-type LogService struct {
-	logRepository      *repository.LogRepository
-	commentRepository  *repository.CommentRepository
-	anamericanoService *AnAmericanoService
-	feedService        *FeedService
+type LogService interface {
+	Get(ctx context.Context, id *entity.ID) (*entity.Log, error)
+	GetList(ctx context.Context, limit int, offset int) (*dto.PaginatedResult[*entity.Log], error)
+	GetListByTopicID(ctx context.Context, topicID *entity.ID, limit int, offset int) (*dto.PaginatedResult[*entity.Log], error)
+	GetListByGeneration(ctx context.Context, generation uint16, limit int, offset int) (*dto.PaginatedResult[*entity.Log], error)
+	Search(ctx context.Context, query string, limit int, offset int) (*dto.PaginatedResult[*entity.Log], error)
+	Create(ctx context.Context, req *dto.LogCreateRequest, authorID *entity.ID) (*entity.Log, error)
+	Update(ctx context.Context, id *entity.ID, req *dto.LogUpdateRequest, authorID *entity.ID) (*entity.Log, error)
+	Delete(ctx context.Context, id *entity.ID) error
+	BuildDescription(content string) string
+	PreRender(ctx context.Context, id *entity.ID) error
+}
+
+type LogServiceImpl struct {
+	logRepository      repository.LogRepository
+	commentRepository  repository.CommentRepository
+	anamericanoService AnAmericanoService
+	feedService        FeedService
 	plainExtractor     *plaintext.Extractor
 	prerenderJobs      *semaphore.Weighted
 }
 
-func NewLogService(logRepository *repository.LogRepository, commentRepository *repository.CommentRepository, anamericanoService *AnAmericanoService) *LogService {
-	return &LogService{
+func NewLogService(logRepository repository.LogRepository, commentRepository repository.CommentRepository, anamericanoService AnAmericanoService, feedService FeedService) LogService {
+	return &LogServiceImpl{
 		logRepository:      logRepository,
 		commentRepository:  commentRepository,
 		anamericanoService: anamericanoService,
+		feedService:        feedService,
 		plainExtractor:     plaintext.NewMarkdownExtractor(),
 		prerenderJobs:      semaphore.NewWeighted(4),
 	}
 }
 
-func (s *LogService) Get(ctx context.Context, id *entity.ID) (*entity.Log, error) {
+func (s *LogServiceImpl) Get(ctx context.Context, id *entity.ID) (*entity.Log, error) {
 	log, err := s.logRepository.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -42,7 +56,7 @@ func (s *LogService) Get(ctx context.Context, id *entity.ID) (*entity.Log, error
 	return log, nil
 }
 
-func (s *LogService) GetList(ctx context.Context, limit int, offset int) (*dto.PaginatedResult[*entity.Log], error) {
+func (s *LogServiceImpl) GetList(ctx context.Context, limit int, offset int) (*dto.PaginatedResult[*entity.Log], error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -63,7 +77,7 @@ func (s *LogService) GetList(ctx context.Context, limit int, offset int) (*dto.P
 	}, nil
 }
 
-func (s *LogService) GetListByTopicID(ctx context.Context, topicID *entity.ID, limit int, offset int) (*dto.PaginatedResult[*entity.Log], error) {
+func (s *LogServiceImpl) GetListByTopicID(ctx context.Context, topicID *entity.ID, limit int, offset int) (*dto.PaginatedResult[*entity.Log], error) {
 	logs, total, err := s.logRepository.FindAllByTopicID(ctx, topicID, limit, offset)
 	if err != nil {
 		return nil, err
@@ -77,7 +91,7 @@ func (s *LogService) GetListByTopicID(ctx context.Context, topicID *entity.ID, l
 	}, nil
 }
 
-func (s *LogService) GetListByGeneration(ctx context.Context, generation uint16, limit int, offset int) (*dto.PaginatedResult[*entity.Log], error) {
+func (s *LogServiceImpl) GetListByGeneration(ctx context.Context, generation uint16, limit int, offset int) (*dto.PaginatedResult[*entity.Log], error) {
 	logs, total, err := s.logRepository.FindAllByGeneration(ctx, generation, limit, offset)
 	if err != nil {
 		return nil, err
@@ -91,7 +105,7 @@ func (s *LogService) GetListByGeneration(ctx context.Context, generation uint16,
 	}, nil
 }
 
-func (s *LogService) Search(ctx context.Context, query string, limit int, offset int) (*dto.PaginatedResult[*entity.Log], error) {
+func (s *LogServiceImpl) Search(ctx context.Context, query string, limit int, offset int) (*dto.PaginatedResult[*entity.Log], error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -112,7 +126,7 @@ func (s *LogService) Search(ctx context.Context, query string, limit int, offset
 	}, nil
 }
 
-func (s *LogService) Create(ctx context.Context, req *dto.LogCreateRequest, authorID *entity.ID) (*entity.Log, error) {
+func (s *LogServiceImpl) Create(ctx context.Context, req *dto.LogCreateRequest, authorID *entity.ID) (*entity.Log, error) {
 	now := time.Now().UTC()
 
 	log := &entity.Log{
@@ -151,7 +165,7 @@ func (s *LogService) Create(ctx context.Context, req *dto.LogCreateRequest, auth
 	return log, nil
 }
 
-func (s *LogService) Update(ctx context.Context, id *entity.ID, req *dto.LogUpdateRequest, authorID *entity.ID) (*entity.Log, error) {
+func (s *LogServiceImpl) Update(ctx context.Context, id *entity.ID, req *dto.LogUpdateRequest, authorID *entity.ID) (*entity.Log, error) {
 	log, err := s.logRepository.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -203,7 +217,7 @@ func (s *LogService) Update(ctx context.Context, id *entity.ID, req *dto.LogUpda
 	return log, nil
 }
 
-func (s *LogService) Delete(ctx context.Context, id *entity.ID) error {
+func (s *LogServiceImpl) Delete(ctx context.Context, id *entity.ID) error {
 	err := s.commentRepository.DeleteByLogID(ctx, id)
 	if err != nil {
 		return err
@@ -212,7 +226,7 @@ func (s *LogService) Delete(ctx context.Context, id *entity.ID) error {
 	return s.logRepository.Delete(ctx, id)
 }
 
-func (s *LogService) BuildDescription(content string) string {
+func (s *LogServiceImpl) BuildDescription(content string) string {
 	pcontent, err := s.plainExtractor.PlainText(content)
 	if err != nil {
 		pcontent = &content
@@ -229,7 +243,7 @@ func (s *LogService) BuildDescription(content string) string {
 	return description
 }
 
-func (s *LogService) PreRender(ctx context.Context, id *entity.ID) error {
+func (s *LogServiceImpl) PreRender(ctx context.Context, id *entity.ID) error {
 	log, err := s.logRepository.FindByID(ctx, id)
 	if err != nil {
 		return err
