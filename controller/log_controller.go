@@ -6,12 +6,13 @@ import (
 	"analog-be/pkg"
 	"analog-be/service"
 	"context"
+	"net/http"
+
 	"github.com/NARUBROWN/spine/pkg/httperr"
 	"github.com/NARUBROWN/spine/pkg/httpx"
 	"github.com/NARUBROWN/spine/pkg/path"
 	"github.com/NARUBROWN/spine/pkg/query"
 	"github.com/NARUBROWN/spine/pkg/spine"
-	"net/http"
 )
 
 type LogController struct {
@@ -38,6 +39,78 @@ func NewLogController(logService *service.LogService, commentService *service.Co
 // @Router       /logs [get]
 func (c *LogController) GetListOfLog(ctx context.Context, page query.Pagination) httpx.Response[dto.PaginatedResult[dto.LogResponse]] {
 	paginatedResult, err := c.logService.GetList(ctx, page.Size, page.Page)
+	if err != nil {
+		return httpx.Response[dto.PaginatedResult[dto.LogResponse]]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusNotFound, // not found
+			},
+		}
+	}
+
+	logResponses := make([]dto.LogResponse, len(paginatedResult.Items))
+	for i, log := range paginatedResult.Items {
+		logResponses[i] = dto.NewLogResponse(log)
+	}
+
+	return httpx.Response[dto.PaginatedResult[dto.LogResponse]]{
+		Body: dto.PaginatedResult[dto.LogResponse]{
+			Items:  logResponses,
+			Total:  paginatedResult.Total,
+			Limit:  paginatedResult.Limit,
+			Offset: paginatedResult.Offset,
+		},
+	}
+}
+
+// GetListOfTopicLog gets a paginated list of logs for a specific topic.
+// @Summary      GetListOfTopicLog
+// @Description  Get a paginated list of logs for a specific topic.
+// @Tags         Log
+// @Produce      json
+// @Param        topicId path int true "Topic ID"
+// @Param        page query int false "Page number"
+// @Param        size query int false "Page size"
+// @Success      200 {object} dto.PaginatedResult[dto.LogResponse]
+// @Failure      404 "Not Found"
+// @Router       /logs/topic/list/{topicId} [get]
+func (c *LogController) GetListOfTopicLog(ctx context.Context, topicID path.Int, page query.Pagination) httpx.Response[dto.PaginatedResult[dto.LogResponse]] {
+	paginatedResult, err := c.logService.GetListByTopicID(ctx, &topicID.Value, page.Size, page.Page)
+	if err != nil {
+		return httpx.Response[dto.PaginatedResult[dto.LogResponse]]{
+			Options: httpx.ResponseOptions{
+				Status: http.StatusNotFound, // not found
+			},
+		}
+	}
+
+	logResponses := make([]dto.LogResponse, len(paginatedResult.Items))
+	for i, log := range paginatedResult.Items {
+		logResponses[i] = dto.NewLogResponse(log)
+	}
+
+	return httpx.Response[dto.PaginatedResult[dto.LogResponse]]{
+		Body: dto.PaginatedResult[dto.LogResponse]{
+			Items:  logResponses,
+			Total:  paginatedResult.Total,
+			Limit:  paginatedResult.Limit,
+			Offset: paginatedResult.Offset,
+		},
+	}
+}
+
+// GetListOfGenerationLog gets a paginated list of logs for a specific generation.
+// @Summary      GetListOfGenerationLog
+// @Description  Get a paginated list of logs for a specific generation.
+// @Tags         Log
+// @Produce      json
+// @Param        generation path int true "Generation"
+// @Param        page query int false "Page number"
+// @Param        size query int false "Page size"
+// @Success      200 {object} dto.PaginatedResult[dto.LogResponse]
+// @Failure      404 "Not Found"
+// @Router       /logs/generation/list/{generation} [get]
+func (c *LogController) GetListOfGenerationLog(ctx context.Context, generation path.Int, page query.Pagination) httpx.Response[dto.PaginatedResult[dto.LogResponse]] {
+	paginatedResult, err := c.logService.GetListByGeneration(ctx, uint16(generation.Value), page.Size, page.Page)
 	if err != nil {
 		return httpx.Response[dto.PaginatedResult[dto.LogResponse]]{
 			Options: httpx.ResponseOptions{

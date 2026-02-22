@@ -3,6 +3,7 @@ package repository
 import (
 	"analog-be/entity"
 	"context"
+
 	"github.com/uptrace/bun"
 )
 
@@ -39,6 +40,43 @@ func (r *LogRepository) FindAll(ctx context.Context, limit int, offset int) ([]*
 
 	count, err := r.db.NewSelect().
 		Model(&logs).
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		ScanAndCount(ctx)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return logs, &count, nil
+}
+
+func (r *LogRepository) FindAllByTopicID(ctx context.Context, topicID *entity.ID, limit int, offset int) ([]*entity.Log, *int, error) {
+	var logs []*entity.Log
+
+	count, err := r.db.NewSelect().
+		Model(&logs).
+		Join("JOIN log_to_topics ltt ON ltt.log_id = log.id").
+		Where("ltt.topic_id = ?", topicID).
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		ScanAndCount(ctx)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return logs, &count, nil
+}
+
+func (r *LogRepository) FindAllByGeneration(ctx context.Context, generation uint16, limit, offset int) ([]*entity.Log, *int, error) {
+	var logs []*entity.Log
+
+	count, err := r.db.NewSelect().
+		Model(&logs).
+		Where("? = ANY(generations)", generation).
 		Order("created_at DESC").
 		Limit(limit).
 		Offset(offset).

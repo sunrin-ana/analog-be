@@ -773,6 +773,35 @@ paths:
       summary: UpdateComment
       tags:
       - Comment
+  /logs/generation/list/{generation}:
+    get:
+      description: Get a paginated list of logs for a specific generation.
+      parameters:
+      - description: Generation
+        in: path
+        name: generation
+        required: true
+        type: integer
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PaginatedResult-dto_LogResponse'
+        "404":
+          description: Not Found
+      summary: GetListOfGenerationLog
+      tags:
+      - Log
   /logs/search/list:
     get:
       description: Search for logs by a query string.
@@ -800,6 +829,35 @@ paths:
         "404":
           description: Not Found
       summary: SearchLogs
+      tags:
+      - Log
+  /logs/topic/list/{topicId}:
+    get:
+      description: Get a paginated list of logs for a specific topic.
+      parameters:
+      - description: Topic ID
+        in: path
+        name: topicId
+        required: true
+        type: integer
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PaginatedResult-dto_LogResponse'
+        "404":
+          description: Not Found
+      summary: GetListOfTopicLog
       tags:
       - Log
   /topic:
