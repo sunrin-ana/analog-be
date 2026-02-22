@@ -3,6 +3,7 @@ package service
 import (
 	"analog-be/dto"
 	"analog-be/entity"
+	"analog-be/repository"
 	"context"
 	"encoding/xml"
 	"errors"
@@ -28,15 +29,15 @@ type FeedService interface {
 }
 
 type FeedServiceImpl struct {
-	logService      LogService
+	logRepo         repository.LogRepository
 	rssFeed         string
 	mu              sync.Mutex
 	isUpdating      bool
 	needToBeUpdated bool
 }
 
-func NewFeedService(logService LogService) FeedService {
-	fs := &FeedServiceImpl{logService: logService, rssFeed: "", isUpdating: false, needToBeUpdated: false}
+func NewFeedService(logRepo repository.LogRepository) FeedService {
+	fs := &FeedServiceImpl{logRepo: logRepo, rssFeed: "", isUpdating: false, needToBeUpdated: false}
 	fs.UpdateFeed()
 	return fs
 }
@@ -99,16 +100,16 @@ func (f *FeedServiceImpl) GetRSSFeed() string {
 }
 
 func (f *FeedServiceImpl) GenerateRSSFeed(ctx context.Context) (string, error) {
-	list, err := f.logService.GetList(ctx, 20, 0)
+	list, _, err := f.logRepo.FindAll(ctx, 20, 0)
 	if err != nil {
 		return "", err
 	}
 
 	var sb strings.Builder
 	sb.WriteString(RSS_FEED_PREFIX)
-	sb.WriteString(fmt.Sprintf("<lastBuildDate>%s</lastBuildDate>", list.Items[0].CreatedAt.Format(time.RFC1123Z)))
+	sb.WriteString(fmt.Sprintf("<lastBuildDate>%s</lastBuildDate>", list[0].CreatedAt.Format(time.RFC1123Z)))
 
-	for _, log := range list.Items {
+	for _, log := range list {
 		sb.WriteString(fmt.Sprintf("<item><title>%s</title><description>%s</description><guid isPermaLink=\"false\">%X</guid><link>%s</link><pubDate>%s</pubDate></item>", log.Title, log.Description, log.ID, BuildLogURL(log), log.CreatedAt.Format(time.RFC1123Z)))
 	}
 
