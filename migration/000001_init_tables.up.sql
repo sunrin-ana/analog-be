@@ -2,8 +2,9 @@
 -- PostgreSQL 필요
 
 CREATE TABLE IF NOT EXISTS users (
-                                     id BIGINT PRIMARY KEY,  -- AnAccount와 같음
-                                     name VARCHAR(255) NOT NULL,
+    id BIGINT PRIMARY KEY,  -- AnAccount와 같음
+    name VARCHAR(255) NOT NULL,
+    handle VARCHAR(255) UNIQUE NOT NULL,
     profile_image VARCHAR(500),
     joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     part_of VARCHAR(100),
@@ -15,10 +16,12 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Article 개념
 CREATE TABLE IF NOT EXISTS logs (
-                                    id BIGSERIAL PRIMARY KEY,
-                                    title VARCHAR(500) NOT NULL,
+    id BIGSERIAL PRIMARY KEY,
+    title VARCHAR(500) NOT NULL,
+    description VARCHAR(100) NOT NULL,
     generations SMALLINT[] DEFAULT '{}',
     content TEXT NOT NULL,
+    prelander TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
