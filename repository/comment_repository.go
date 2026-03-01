@@ -7,17 +7,26 @@ import (
 	"github.com/uptrace/bun"
 )
 
-type CommentRepository struct {
+type CommentRepository interface {
+	FindByID(ctx context.Context, id *entity.ID) (*entity.Comment, error)
+	FindByLogID(ctx context.Context, logID *entity.ID) ([]*entity.Comment, *int, error)
+	Create(ctx context.Context, comment *entity.Comment) (*entity.Comment, error)
+	Update(ctx context.Context, comment *entity.Comment) error
+	Delete(ctx context.Context, id *entity.ID) error
+	DeleteByLogID(ctx context.Context, logID *entity.ID) error
+}
+
+type CommentRepositoryImpl struct {
 	db bun.IDB
 }
 
-func NewCommentRepository(db bun.IDB) *CommentRepository {
-	return &CommentRepository{
+func NewCommentRepository(db bun.IDB) CommentRepository {
+	return &CommentRepositoryImpl{
 		db: db,
 	}
 }
 
-func (r *CommentRepository) FindByID(ctx context.Context, id *entity.ID) (*entity.Comment, error) {
+func (r *CommentRepositoryImpl) FindByID(ctx context.Context, id *entity.ID) (*entity.Comment, error) {
 	comment := new(entity.Comment)
 
 	err := r.db.NewSelect().
@@ -33,7 +42,7 @@ func (r *CommentRepository) FindByID(ctx context.Context, id *entity.ID) (*entit
 	return comment, nil
 }
 
-func (r *CommentRepository) FindByLogID(ctx context.Context, logID *entity.ID) ([]*entity.Comment, *int, error) {
+func (r *CommentRepositoryImpl) FindByLogID(ctx context.Context, logID *entity.ID) ([]*entity.Comment, *int, error) {
 	var comments []*entity.Comment
 
 	count, err := r.db.NewSelect().
@@ -49,14 +58,14 @@ func (r *CommentRepository) FindByLogID(ctx context.Context, logID *entity.ID) (
 	return comments, &count, nil
 }
 
-func (r *CommentRepository) Create(ctx context.Context, comment *entity.Comment) (*entity.Comment, error) {
+func (r *CommentRepositoryImpl) Create(ctx context.Context, comment *entity.Comment) (*entity.Comment, error) {
 	_, err := r.db.NewInsert().
 		Model(comment).
 		Exec(ctx)
 	return comment, err
 }
 
-func (r *CommentRepository) Update(ctx context.Context, comment *entity.Comment) error {
+func (r *CommentRepositoryImpl) Update(ctx context.Context, comment *entity.Comment) error {
 	_, err := r.db.NewUpdate().
 		Model(comment).
 		Where("id = ?", comment.ID).
@@ -64,7 +73,7 @@ func (r *CommentRepository) Update(ctx context.Context, comment *entity.Comment)
 	return err
 }
 
-func (r *CommentRepository) Delete(ctx context.Context, id *entity.ID) error {
+func (r *CommentRepositoryImpl) Delete(ctx context.Context, id *entity.ID) error {
 	_, err := r.db.NewDelete().
 		Model((*entity.Comment)(nil)).
 		Where("id = ?", id).
@@ -72,7 +81,7 @@ func (r *CommentRepository) Delete(ctx context.Context, id *entity.ID) error {
 	return err
 }
 
-func (r *CommentRepository) DeleteByLogID(ctx context.Context, logID *entity.ID) error {
+func (r *CommentRepositoryImpl) DeleteByLogID(ctx context.Context, logID *entity.ID) error {
 	_, err := r.db.NewDelete().
 		Model((*entity.Comment)(nil)).
 		Where("log_id = ?", logID).

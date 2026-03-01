@@ -6,19 +6,20 @@ import (
 	"analog-be/pkg"
 	"analog-be/service"
 	"context"
+	"net/http"
+
 	"github.com/NARUBROWN/spine/pkg/httperr"
 	"github.com/NARUBROWN/spine/pkg/httpx"
 	"github.com/NARUBROWN/spine/pkg/path"
 	"github.com/NARUBROWN/spine/pkg/query"
 	"github.com/NARUBROWN/spine/pkg/spine"
-	"net/http"
 )
 
 type UserController struct {
-	userService *service.UserService
+	userService service.UserService
 }
 
-func NewUserController(userService *service.UserService) *UserController {
+func NewUserController(userService service.UserService) *UserController {
 	return &UserController{
 		userService: userService,
 	}

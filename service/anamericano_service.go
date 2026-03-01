@@ -8,17 +8,30 @@ import (
 	"github.com/sunrin-ana/anamericano-golang"
 )
 
-type AnAmericanoService struct {
+type AnAmericanoService interface {
+	Check(
+		userID int64,
+		relation string,
+		ns string,
+		targetId string) (bool, error)
+	Write(
+		userID int64,
+		relation string,
+		ns string,
+		targetId int64) (*anamericano.Permission, error)
+}
+
+type AnAmericanoServiceImpl struct {
 	client *anamericano.Client
 }
 
-func NewAnAmericanoService() *AnAmericanoService {
-	return &AnAmericanoService{
+func NewAnAmericanoService() AnAmericanoService {
+	return &AnAmericanoServiceImpl{
 		client: anamericano.NewClient(&anamericano.ContextTokenAuth{}, nil),
 	}
 }
 
-func (s *AnAmericanoService) Check(
+func (s *AnAmericanoServiceImpl) Check(
 	userID int64,
 	relation string,
 	ns string,
@@ -43,7 +56,7 @@ func (s *AnAmericanoService) Check(
 	return resp.Allowed, nil
 }
 
-func (s *AnAmericanoService) Write(
+func (s *AnAmericanoServiceImpl) Write(
 	userID int64,
 	relation string,
 	ns string,

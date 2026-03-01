@@ -20,19 +20,28 @@ import (
 	"github.com/google/uuid"
 )
 
-type AnAccountService struct {
-	stateRepo   *repository.OAuthStateRepository
-	sessionRepo *repository.SessionRepository
-	userRepo    *repository.UserRepository
+type AnAccountService interface {
+	InitiateLogin(ctx context.Context, redirectUri string) (*dto.LoginInitResponse, error)
+	InitiateSignup(ctx context.Context, redirectUri string) (*dto.SignupInitResponse, error)
+	HandleCallback(ctx context.Context, code, state string) (*dto.AuthResponse, error)
+	Logout(ctx context.Context, sessionToken string) error
+	ValidateSession(ctx context.Context, sessionToken string) (*entity.User, error)
+	RefreshAccessToken(refreshToken string) (*dto.TokenResponse, error)
+}
+
+type AnAccountServiceImpl struct {
+	stateRepo   repository.OAuthStateRepository
+	sessionRepo repository.SessionRepository
+	userRepo    repository.UserRepository
 	httpClient  *http.Client
 }
 
 func NewAnAccountOAuthService(
-	stateRepo *repository.OAuthStateRepository,
-	sessionRepo *repository.SessionRepository,
-	userRepo *repository.UserRepository,
-) *AnAccountService {
-	return &AnAccountService{
+	stateRepo repository.OAuthStateRepository,
+	sessionRepo repository.SessionRepository,
+	userRepo repository.UserRepository,
+) AnAccountService {
+	return &AnAccountServiceImpl{
 		stateRepo:   stateRepo,
 		sessionRepo: sessionRepo,
 		userRepo:    userRepo,
@@ -42,11 +51,11 @@ func NewAnAccountOAuthService(
 	}
 }
 
-func (s *AnAccountService) InitiateLogin(ctx context.Context, redirectUri string) (*dto.LoginInitResponse, error) {
+func (s *AnAccountServiceImpl) InitiateLogin(ctx context.Context, redirectUri string) (*dto.LoginInitResponse, error) {
 	return s.initiateOAuth(ctx, redirectUri, false)
 }
 
-func (s *AnAccountService) InitiateSignup(ctx context.Context, redirectUri string) (*dto.SignupInitResponse, error) {
+func (s *AnAccountServiceImpl) InitiateSignup(ctx context.Context, redirectUri string) (*dto.SignupInitResponse, error) {
 	resp, err := s.initiateOAuth(ctx, redirectUri, true)
 	if err != nil {
 		return nil, err
@@ -57,7 +66,7 @@ func (s *AnAccountService) InitiateSignup(ctx context.Context, redirectUri strin
 	}, nil
 }
 
-func (s *AnAccountService) initiateOAuth(ctx context.Context, redirectUri string, isSignup bool) (*dto.LoginInitResponse, error) {
+func (s *AnAccountServiceImpl) initiateOAuth(ctx context.Context, redirectUri string, isSignup bool) (*dto.LoginInitResponse, error) {
 	state := uuid.New().String()
 
 	codeVerifier, err := generateCodeVerifier()
@@ -89,7 +98,7 @@ func (s *AnAccountService) initiateOAuth(ctx context.Context, redirectUri string
 	}, nil
 }
 
-func (s *AnAccountService) HandleCallback(ctx context.Context, code, state string) (*dto.AuthResponse, error) {
+func (s *AnAccountServiceImpl) HandleCallback(ctx context.Context, code, state string) (*dto.AuthResponse, error) {
 	oauthState, err := s.stateRepo.FindByState(ctx, state)
 	if err != nil {
 		return nil, fmt.Errorf("invalid state: %w", err)
@@ -135,11 +144,11 @@ func (s *AnAccountService) HandleCallback(ctx context.Context, code, state strin
 	}, nil
 }
 
-func (s *AnAccountService) Logout(ctx context.Context, sessionToken string) error {
+func (s *AnAccountServiceImpl) Logout(ctx context.Context, sessionToken string) error {
 	return s.sessionRepo.Delete(ctx, sessionToken)
 }
 
-func (s *AnAccountService) ValidateSession(ctx context.Context, sessionToken string) (*entity.User, error) {
+func (s *AnAccountServiceImpl) ValidateSession(ctx context.Context, sessionToken string) (*entity.User, error) {
 	session, err := s.sessionRepo.FindByToken(ctx, sessionToken)
 	if err != nil {
 		return nil, fmt.Errorf("invalid session")
@@ -157,7 +166,7 @@ func (s *AnAccountService) ValidateSession(ctx context.Context, sessionToken str
 	return session.User, nil
 }
 
-func (s *AnAccountService) RefreshAccessToken(refreshToken string) (*dto.TokenResponse, error) {
+func (s *AnAccountServiceImpl) RefreshAccessToken(refreshToken string) (*dto.TokenResponse, error) {
 	baseURL := getAnAccountBaseURL()
 	clientID := getAnAccountClientID()
 	clientSecret := getAnAccountClientSecret()
@@ -193,7 +202,7 @@ func (s *AnAccountService) RefreshAccessToken(refreshToken string) (*dto.TokenRe
 	return &tokenResp, nil
 }
 
-func (s *AnAccountService) buildAuthorizationURL(state, codeChallenge, redirectUri string) string {
+func (s *AnAccountServiceImpl) buildAuthorizationURL(state, codeChallenge, redirectUri string) string {
 	baseURL := getAnAccountBaseURL()
 	clientID := getAnAccountClientID()
 
@@ -209,7 +218,7 @@ func (s *AnAccountService) buildAuthorizationURL(state, codeChallenge, redirectU
 	return fmt.Sprintf("%s/oauth2/authorize?%s", baseURL, params.Encode())
 }
 
-func (s *AnAccountService) exchangeCodeForToken(code, codeVerifier, redirectUri string) (*dto.TokenResponse, error) {
+func (s *AnAccountServiceImpl) exchangeCodeForToken(code, codeVerifier, redirectUri string) (*dto.TokenResponse, error) {
 	baseURL := getAnAccountBaseURL()
 	clientID := getAnAccountClientID()
 	clientSecret := getAnAccountClientSecret()
@@ -247,7 +256,7 @@ func (s *AnAccountService) exchangeCodeForToken(code, codeVerifier, redirectUri 
 	return &tokenResp, nil
 }
 
-func (s *AnAccountService) getUserInfo(accessToken string) (*dto.UserInfoResponse, error) {
+func (s *AnAccountServiceImpl) getUserInfo(accessToken string) (*dto.UserInfoResponse, error) {
 	baseURL := getAnAccountBaseURL()
 
 	req, err := http.NewRequest("GET", baseURL+"/userinfo", nil)
@@ -275,7 +284,7 @@ func (s *AnAccountService) getUserInfo(accessToken string) (*dto.UserInfoRespons
 	return &userInfo, nil
 }
 
-func (s *AnAccountService) findOrCreateUser(ctx context.Context, userInfo *dto.UserInfoResponse, isSignup bool) (*entity.User, error) {
+func (s *AnAccountServiceImpl) findOrCreateUser(ctx context.Context, userInfo *dto.UserInfoResponse, isSignup bool) (*entity.User, error) {
 	var userID entity.ID
 	fmt.Sscanf(userInfo.Sub, "%d", &userID)
 
@@ -310,7 +319,7 @@ func (s *AnAccountService) findOrCreateUser(ctx context.Context, userInfo *dto.U
 	return newUser, nil
 }
 
-func (s *AnAccountService) createSession(ctx context.Context, userID *entity.ID) (*entity.Session, error) {
+func (s *AnAccountServiceImpl) createSession(ctx context.Context, userID *entity.ID) (*entity.Session, error) {
 	sessionToken, err := generateSecureToken(32)
 	if err != nil {
 		return nil, err

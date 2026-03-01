@@ -5,19 +5,20 @@ import (
 	"analog-be/pkg"
 	"analog-be/service"
 	"context"
+	"net/http"
+
 	"github.com/NARUBROWN/spine/pkg/httperr"
 	"github.com/NARUBROWN/spine/pkg/httpx"
-	"net/http"
 
 	"github.com/NARUBROWN/spine/pkg/query"
 )
 
 type AuthController struct {
-	anAccountOAuthService *service.AnAccountService
-	userService           *service.UserService
+	anAccountOAuthService service.AnAccountService
+	userService           service.UserService
 }
 
-func NewAuthController(anAccountOAuthService *service.AnAccountService, userService *service.UserService) *AuthController {
+func NewAuthController(anAccountOAuthService service.AnAccountService, userService service.UserService) *AuthController {
 	return &AuthController{
 		anAccountOAuthService: anAccountOAuthService,
 		userService:           userService,

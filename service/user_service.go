@@ -9,17 +9,26 @@ import (
 	"time"
 )
 
-type UserService struct {
-	repository *repository.UserRepository
+type UserService interface {
+	Get(ctx context.Context, id *entity.ID) (*entity.User, error)
+	Create(ctx context.Context, req *dto.UserCreateRequest) (*entity.User, error)
+	Update(ctx context.Context, id *entity.ID, req *dto.UserUpdateRequest) (*entity.User, error)
+	Delete(ctx context.Context, id *entity.ID) error
+	List(ctx context.Context, limit, offset int) (*dto.PaginatedResult[*entity.User], error)
+	Search(ctx context.Context, query string, limit, offset int) (*dto.PaginatedResult[*entity.User], error)
 }
 
-func NewUserService(repository *repository.UserRepository) *UserService {
-	return &UserService{
+type UserServiceImpl struct {
+	repository repository.UserRepository
+}
+
+func NewUserService(repository repository.UserRepository) UserService {
+	return &UserServiceImpl{
 		repository: repository,
 	}
 }
 
-func (s *UserService) Get(ctx context.Context, id *entity.ID) (*entity.User, error) {
+func (s *UserServiceImpl) Get(ctx context.Context, id *entity.ID) (*entity.User, error) {
 	user, err := s.repository.FindByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)
@@ -28,7 +37,7 @@ func (s *UserService) Get(ctx context.Context, id *entity.ID) (*entity.User, err
 	return user, nil
 }
 
-func (s *UserService) Create(ctx context.Context, req *dto.UserCreateRequest) (*entity.User, error) {
+func (s *UserServiceImpl) Create(ctx context.Context, req *dto.UserCreateRequest) (*entity.User, error) {
 	now := time.Now()
 
 	user := &entity.User{
@@ -53,7 +62,7 @@ func (s *UserService) Create(ctx context.Context, req *dto.UserCreateRequest) (*
 	return user, nil
 }
 
-func (s *UserService) Update(ctx context.Context, id *entity.ID, req *dto.UserUpdateRequest) (*entity.User, error) {
+func (s *UserServiceImpl) Update(ctx context.Context, id *entity.ID, req *dto.UserUpdateRequest) (*entity.User, error) {
 	user, err := s.repository.FindByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)
@@ -83,7 +92,7 @@ func (s *UserService) Update(ctx context.Context, id *entity.ID, req *dto.UserUp
 	return user, nil
 }
 
-func (s *UserService) Delete(ctx context.Context, id *entity.ID) error {
+func (s *UserServiceImpl) Delete(ctx context.Context, id *entity.ID) error {
 	_, err := s.repository.FindByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("user not found: %w", err)
@@ -97,7 +106,7 @@ func (s *UserService) Delete(ctx context.Context, id *entity.ID) error {
 	return nil
 }
 
-func (s *UserService) List(ctx context.Context, limit, offset int) (*dto.PaginatedResult[*entity.User], error) {
+func (s *UserServiceImpl) List(ctx context.Context, limit, offset int) (*dto.PaginatedResult[*entity.User], error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -118,7 +127,7 @@ func (s *UserService) List(ctx context.Context, limit, offset int) (*dto.Paginat
 	}, nil
 }
 
-func (s *UserService) Search(ctx context.Context, query string, limit, offset int) (*dto.PaginatedResult[*entity.User], error) {
+func (s *UserServiceImpl) Search(ctx context.Context, query string, limit, offset int) (*dto.PaginatedResult[*entity.User], error) {
 	if limit <= 0 {
 		limit = 20
 	}
