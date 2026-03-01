@@ -1,14 +1,13 @@
 package dto
 
-import "analog-be/entity"
+import (
+	"analog-be/entity"
+
+	"github.com/NARUBROWN/spine/pkg/httpx"
+)
 
 type LoginInitRequest struct {
-	RedirectUri string `json:"redirectUri" binding:"required"`
-}
-
-type LoginInitResponse struct {
-	AuthorizationUrl string `json:"authorizationUrl"`
-	State            string `json:"state"`
+	RedirectUri string `json:"redirectUri" binding:"required"` // 인증 진행 이후 redirect 될 URI
 }
 
 type SignupInitRequest struct {
@@ -30,9 +29,8 @@ type OAuthCallbackRequest struct {
 }
 
 type AuthResponse struct {
-	SessionToken string   `json:"sessionToken"`
-	User         *UserDTO `json:"user"`
-	ExpiresAt    string   `json:"expiresAt"`
+	Cookies     []httpx.Cookie
+	RedirectUri string
 }
 
 type UserDTO struct {

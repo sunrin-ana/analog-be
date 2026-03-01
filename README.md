@@ -18,3 +18,10 @@
 - [An-Account](https://docs.ana.st/anaccount/development/api/oauth2-integration/)
 - [An-Americano의 구조와 권한](https://docs.ana.st/anaccount/development/an-americano/structure/)
 - [An-Americano Golang Wrapper 문서](https://docs.ana.st/anaccount/development/an-americano/api/golang/)
+
+
+## [NO AI FIX](https://github.com/sunrin-ana/analog-be/no-ai-fix)
+> Analog는 많은 양의 코드가 생성형 인공지능 모델에 의해 작성되었습니다. 다만, 생성형 인공지능 모델의 한계 때문에 논리적 오류를 포함한 다수의 오류가 발생하고 있습니다. NO AI FIX는 이러한 오류를 해결하기 위하여 시행하고 있는 제도 입니다.
+>
+
+- [NO AI FIX](https://github.com/sunrin-ana/analog-be/no-ai-fix)

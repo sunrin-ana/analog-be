@@ -78,9 +78,8 @@ func main() {
 		repository.NewUserRepository,
 		repository.NewLogRepository,
 		repository.NewCommentRepository,
-		repository.NewOAuthStateRepository,
-		repository.NewSessionRepository,
 		repository.NewTopicRepository,
+		repository.NewTokenRepository,
 
 		// 서비스
 		service.NewLogService,
@@ -90,6 +89,7 @@ func main() {
 		service.NewTopicService,
 		service.NewAnAmericanoService,
 		service.NewFeedService,
+		service.NewTokenService,
 
 		// 컨트롤러
 		controller.NewHealthController,
