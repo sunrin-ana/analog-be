@@ -7,16 +7,24 @@ import (
 	"context"
 )
 
-type CommentService struct {
-	commentRepository *repository.CommentRepository
-	logRepository     *repository.LogRepository
+type CommentService interface {
+	Create(ctx context.Context, req *dto.CommentCreateRequest, logID *entity.ID, authorID *entity.ID) (*entity.Comment, error)
+	Update(ctx context.Context, commentID *entity.ID, req *dto.CommentUpdateRequest) (*entity.Comment, error)
+	Delete(ctx context.Context, commentID *entity.ID) error
+	FindByLogID(ctx context.Context, logID *entity.ID, limit, offset int) (*dto.PaginatedResult[*entity.Comment], error)
+	GetById(ctx context.Context, commentID *entity.ID) (*entity.Comment, error)
 }
 
-func NewCommentService(commentRepository *repository.CommentRepository, logRepository *repository.LogRepository) *CommentService {
-	return &CommentService{commentRepository: commentRepository, logRepository: logRepository}
+type CommentServiceImpl struct {
+	commentRepository repository.CommentRepository
+	logRepository     repository.LogRepository
 }
 
-func (s *CommentService) Create(ctx context.Context, req *dto.CommentCreateRequest, logID *entity.ID, authorID *entity.ID) (*entity.Comment, error) {
+func NewCommentService(commentRepository repository.CommentRepository, logRepository repository.LogRepository) CommentService {
+	return &CommentServiceImpl{commentRepository: commentRepository, logRepository: logRepository}
+}
+
+func (s *CommentServiceImpl) Create(ctx context.Context, req *dto.CommentCreateRequest, logID *entity.ID, authorID *entity.ID) (*entity.Comment, error) {
 	_, err := s.logRepository.FindByID(ctx, logID)
 	if err != nil {
 		return nil, err
@@ -36,7 +44,7 @@ func (s *CommentService) Create(ctx context.Context, req *dto.CommentCreateReque
 	return comment, nil
 }
 
-func (s *CommentService) Update(ctx context.Context, commentID *entity.ID, req *dto.CommentUpdateRequest) (*entity.Comment, error) {
+func (s *CommentServiceImpl) Update(ctx context.Context, commentID *entity.ID, req *dto.CommentUpdateRequest) (*entity.Comment, error) {
 	comment, err := s.commentRepository.FindByID(ctx, commentID)
 	if err != nil {
 		return nil, err
@@ -52,11 +60,11 @@ func (s *CommentService) Update(ctx context.Context, commentID *entity.ID, req *
 	return comment, nil
 }
 
-func (s *CommentService) Delete(ctx context.Context, commentID *entity.ID) error {
+func (s *CommentServiceImpl) Delete(ctx context.Context, commentID *entity.ID) error {
 	return s.commentRepository.Delete(ctx, commentID)
 }
 
-func (s *CommentService) FindByLogID(ctx context.Context, logID *entity.ID, limit, offset int) (*dto.PaginatedResult[*entity.Comment], error) {
+func (s *CommentServiceImpl) FindByLogID(ctx context.Context, logID *entity.ID, limit, offset int) (*dto.PaginatedResult[*entity.Comment], error) {
 	_, err := s.logRepository.FindByID(ctx, logID)
 	if err != nil {
 		return nil, err
@@ -75,7 +83,7 @@ func (s *CommentService) FindByLogID(ctx context.Context, logID *entity.ID, limi
 	}, nil
 }
 
-func (s *CommentService) GetById(ctx context.Context, commentID *entity.ID) (*entity.Comment, error) {
+func (s *CommentServiceImpl) GetById(ctx context.Context, commentID *entity.ID) (*entity.Comment, error) {
 	comment, err := s.commentRepository.FindByID(ctx, commentID)
 	if err != nil {
 		return nil, err

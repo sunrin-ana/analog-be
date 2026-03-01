@@ -13,10 +13,10 @@ import (
 )
 
 type TopicController struct {
-	topicService *service.TopicService
+	topicService service.TopicService
 }
 
-func NewTopicController(topicService *service.TopicService) *TopicController {
+func NewTopicController(topicService service.TopicService) *TopicController {
 	return &TopicController{topicService: topicService}
 }
 

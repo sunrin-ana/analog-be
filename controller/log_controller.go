@@ -15,11 +15,11 @@ import (
 )
 
 type LogController struct {
-	logService     *service.LogService
-	commentService *service.CommentService
+	logService     service.LogService
+	commentService service.CommentService
 }
 
-func NewLogController(logService *service.LogService, commentService *service.CommentService) *LogController {
+func NewLogController(logService service.LogService, commentService service.CommentService) *LogController {
 	return &LogController{
 		logService:     logService,
 		commentService: commentService,
