@@ -14,11 +14,11 @@ import (
 )
 
 type AuthController struct {
-	oauthService *service.OAuthService
-	userService  *service.UserService
+	oauthService service.OAuthService
+	userService  service.UserService
 }
 
-func NewAuthController(anAccountOAuthService *service.OAuthService, userService *service.UserService) *AuthController {
+func NewAuthController(anAccountOAuthService service.OAuthService, userService service.UserService) *AuthController {
 	return &AuthController{
 		oauthService: anAccountOAuthService,
 		userService:  userService,
@@ -26,15 +26,16 @@ func NewAuthController(anAccountOAuthService *service.OAuthService, userService 
 }
 
 // HandleAuthCallback handles the OAuth2 callback after a successful login.
-// @Summary      HandleAuthCallback
-// @Description  Handle the OAuth2 callback after a successful login.
+// @Summary      Handle OAuth2 Callback
+// @Description  Handles the OAuth2 callback, sets auth cookies, and redirects to the original state.
 // @Tags         Auth
 // @Produce      json
-// @Param        code query string true "Authorization code"
-// @Param        state query string true "State"
-// @Success      200 {object} dto.AuthResponse
-// @Failure      400 "Bad Request"
-// @Failure      500 "Internal Server Error"
+// @Param        code   query     string  true  "Authorization code"
+// @Param        state  query     string  true  "State (original redirect URI)"
+// @Success      303    {string}  string  "Redirecting to original state"
+// @Header       303    {string}  Location "Redirect URI"
+// @Failure      400    {object}  pkg.AppError "Missing code or state"
+// @Failure      500    {object}  pkg.AppError "Internal Server Error"
 // @Router       /auth/callback [get]
 func (c *AuthController) HandleAuthCallback(ctx context.Context, q query.Values) httpx.Response[string] {
 	code := q.Get("code")
@@ -75,13 +76,15 @@ func (c *AuthController) HandleAuthCallback(ctx context.Context, q query.Values)
 }
 
 // RefreshToken refreshes the access token using a valid refresh token.
-// @Summary      RefreshToken
-// @Description  Refreshes the access token using a valid refresh token.
+// @Summary      Refresh Access Token
+// @Description  Refreshes the access token using the refresh token stored in the `refresh_tkn` cookie.
 // @Tags         Auth
-// @Success      200 "OK"
-// @Failure      401 "Not Authorized"
-// @Failure      500 "Internal Server Error"
-// @Router       /auth/callback [get]
+// @Produce      json
+// @Success      200  {string}  string       "Successfully refreshed tokens"
+// @Header       200  {string}  Set-Cookie   "alog_tkn and refresh_tkn cookies"
+// @Failure      401  {object}  pkg.AppError "Unauthorized (missing or invalid refresh token)"
+// @Failure      500  {object}  pkg.AppError "Internal Server Error"
+// @Router       /auth/token [put]
 func (c *AuthController) RefreshToken(ctx context.Context, spineCtx spine.Ctx) (*httpx.Response[string], error) {
 	v, ok := spineCtx.Get("Cookie")
 
@@ -111,6 +114,14 @@ func (c *AuthController) RefreshToken(ctx context.Context, spineCtx spine.Ctx) (
 	}, nil
 }
 
+// Logout logs out the user by clearing auth cookies.
+// @Summary      Logout
+// @Description  Logs out the user by clearing the `alog_tkn` and `refresh_tkn` cookies.
+// @Tags         Auth
+// @Produce      json
+// @Success      200  {string}  string      "Successfully logged out"
+// @Header       200  {string}  Set-Cookie  "Expired alog_tkn and refresh_tkn cookies"
+// @Router       /auth/token [delete]
 func (c *AuthController) Logout(ctx context.Context, spineCtx spine.Ctx) httpx.Response[string] {
 	v, ok := spineCtx.Get("Cookie")
 

@@ -17,24 +17,32 @@ import (
 	"github.com/NARUBROWN/spine/pkg/httpx"
 )
 
-type OAuthService struct {
-	userRepo     *repository.UserRepository
-	tokenService *TokenService
+type OAuthService interface {
+	HandleCallback(ctx context.Context, code, state string) (*dto.AuthResponse, error)
+	RefreshToken(ctx context.Context, refreshToken string) (*[2]httpx.Cookie, error)
+	Logout(ctx context.Context, refreshToken string) error
+}
+
+type OAuthServiceImpl struct {
+	userRepo     repository.UserRepository
+	tokenService TokenService
 	httpClient   *http.Client
 }
 
 func NewAnAccountOAuthService(
-	userRepo *repository.UserRepository,
-) *OAuthService {
-	return &OAuthService{
-		userRepo: userRepo,
+	userRepo repository.UserRepository,
+	tokenService TokenService,
+) OAuthService {
+	return &OAuthServiceImpl{
+		userRepo:     userRepo,
+		tokenService: tokenService,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
 	}
 }
 
-func (s *OAuthService) HandleCallback(ctx context.Context, code, state string) (*dto.AuthResponse, error) {
+func (s *OAuthServiceImpl) HandleCallback(ctx context.Context, code, state string) (*dto.AuthResponse, error) {
 	tokenResp, err := s.exchangeCodeForToken(code, os.Getenv("BASE_URL")+"/api/auth/callback")
 	if err != nil {
 		return nil, fmt.Errorf("failed to exchange code: %w", err)
@@ -90,7 +98,7 @@ func (s *OAuthService) HandleCallback(ctx context.Context, code, state string) (
 	}, nil
 }
 
-func (s *OAuthService) RefreshToken(ctx context.Context, refreshToken string) (*[2]httpx.Cookie, error) {
+func (s *OAuthServiceImpl) RefreshToken(ctx context.Context, refreshToken string) (*[2]httpx.Cookie, error) {
 	result, err := s.tokenService.RefreshToken(ctx, refreshToken)
 
 	if err != nil {
@@ -102,11 +110,11 @@ func (s *OAuthService) RefreshToken(ctx context.Context, refreshToken string) (*
 	return &cookies, nil
 }
 
-func (s *OAuthService) Logout(ctx context.Context, refreshToken string) error {
+func (s *OAuthServiceImpl) Logout(ctx context.Context, refreshToken string) error {
 	return nil
 }
 
-func (s *OAuthService) bakeAuthCookies(token *string, refreshToken *entity.RefreshToken) [2]httpx.Cookie {
+func (s *OAuthServiceImpl) bakeAuthCookies(token *string, refreshToken *entity.RefreshToken) [2]httpx.Cookie {
 	tknCookie := httpx.Cookie{
 		Name:     "alog_tkn",
 		Value:    *token,
@@ -132,7 +140,7 @@ func (s *OAuthService) bakeAuthCookies(token *string, refreshToken *entity.Refre
 	return [2]httpx.Cookie{tknCookie, refreshCookie}
 }
 
-func (s *OAuthService) exchangeCodeForToken(code, redirectUri string) (*dto.TokenResponse, error) {
+func (s *OAuthServiceImpl) exchangeCodeForToken(code, redirectUri string) (*dto.TokenResponse, error) {
 	baseURL := getAnAccountBaseURL()
 	clientID := getAnAccountClientID()
 	clientSecret := getAnAccountClientSecret()
@@ -169,7 +177,7 @@ func (s *OAuthService) exchangeCodeForToken(code, redirectUri string) (*dto.Toke
 	return &tokenResp, nil
 }
 
-func (s *OAuthService) getUserInfo(accessToken string) (*dto.UserInfoResponse, error) {
+func (s *OAuthServiceImpl) getUserInfo(accessToken string) (*dto.UserInfoResponse, error) {
 	baseURL := getAnAccountBaseURL()
 
 	req, err := http.NewRequest("GET", baseURL+"/userinfo", nil)
@@ -197,7 +205,7 @@ func (s *OAuthService) getUserInfo(accessToken string) (*dto.UserInfoResponse, e
 	return &userInfo, nil
 }
 
-func (s *OAuthService) findOrCreateUser(ctx context.Context, userInfo *dto.UserInfoResponse) (*entity.User, error) {
+func (s *OAuthServiceImpl) findOrCreateUser(ctx context.Context, userInfo *dto.UserInfoResponse) (*entity.User, error) {
 	var userID entity.ID
 	fmt.Sscanf(userInfo.Sub, "%d", &userID)
 

@@ -7,17 +7,23 @@ import (
 	"github.com/uptrace/bun"
 )
 
-type TokenRepository struct {
+type TokenRepository interface {
+	FindByID(ctx context.Context, refreshTokenID string) (*entity.RefreshToken, error)
+	Create(ctx context.Context, token *entity.RefreshToken) error
+	Delete(ctx context.Context, refreshTokenID string) error
+}
+
+type TokenRepositoryImpl struct {
 	db bun.IDB
 }
 
-func NewTokenRepository(db bun.IDB) *TokenRepository {
-	return &TokenRepository{
+func NewTokenRepository(db bun.IDB) TokenRepository {
+	return &TokenRepositoryImpl{
 		db: db,
 	}
 }
 
-func (r *TokenRepository) FindByID(ctx context.Context, refreshTokenID string) (*entity.RefreshToken, error) {
+func (r *TokenRepositoryImpl) FindByID(ctx context.Context, refreshTokenID string) (*entity.RefreshToken, error) {
 	refToken := new(entity.RefreshToken)
 
 	err := r.db.NewSelect().
@@ -31,7 +37,7 @@ func (r *TokenRepository) FindByID(ctx context.Context, refreshTokenID string) (
 	return refToken, nil
 }
 
-func (r *TokenRepository) Create(ctx context.Context, token *entity.RefreshToken) error {
+func (r *TokenRepositoryImpl) Create(ctx context.Context, token *entity.RefreshToken) error {
 	_, err := r.db.NewInsert().
 		Model((*entity.RefreshToken)(nil)).
 		Exec(ctx, token)
@@ -41,7 +47,7 @@ func (r *TokenRepository) Create(ctx context.Context, token *entity.RefreshToken
 	return nil
 }
 
-func (r *TokenRepository) Delete(ctx context.Context, refreshTokenID string) error {
+func (r *TokenRepositoryImpl) Delete(ctx context.Context, refreshTokenID string) error {
 	_, err := r.db.NewDelete().
 		Model((*entity.RefreshToken)(nil)).
 		Where("token = ?", refreshTokenID).

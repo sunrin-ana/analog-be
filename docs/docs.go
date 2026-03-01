@@ -15,16 +15,16 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/auth/login/callback": {
+        "/auth/callback": {
             "get": {
-                "description": "Handle the OAuth2 callback after a successful login.",
+                "description": "Handles the OAuth2 callback, sets auth cookies, and redirects to the original state.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Auth"
                 ],
-                "summary": "HandleLoginCallback",
+                "summary": "Handle OAuth2 Callback",
                 "parameters": [
                     {
                         "type": "string",
@@ -35,77 +35,80 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "State",
+                        "description": "State (original redirect URI)",
                         "name": "state",
                         "in": "query",
                         "required": true
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "303": {
+                        "description": "Redirecting to original state",
                         "schema": {
-                            "$ref": "#/definitions/dto.AuthResponse"
+                            "type": "string"
+                        },
+                        "headers": {
+                            "Location": {
+                                "type": "string",
+                                "description": "Redirect URI"
+                            }
                         }
                     },
                     "400": {
-                        "description": "Bad Request"
+                        "description": "Missing code or state",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.AppError"
+                        }
                     },
                     "500": {
-                        "description": "Internal Server Error"
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.AppError"
+                        }
                     }
                 }
             }
         },
-        "/auth/login/init": {
-            "post": {
-                "description": "Initiate the OAuth2 login flow.",
-                "consumes": [
-                    "application/json"
-                ],
+        "/auth/token": {
+            "put": {
+                "description": "Refreshes the access token using the refresh token stored in the ` + "`" + `refresh_tkn` + "`" + ` cookie.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Auth"
                 ],
-                "summary": "InitiateLogin",
-                "parameters": [
-                    {
-                        "description": "Login initiation request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.LoginInitRequest"
-                        }
-                    }
-                ],
+                "summary": "Refresh Access Token",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Successfully refreshed tokens",
                         "schema": {
-                            "$ref": "#/definitions/dto.LoginInitResponse"
+                            "type": "string"
+                        },
+                        "headers": {
+                            "Set-Cookie": {
+                                "type": "string",
+                                "description": "alog_tkn and refresh_tkn cookies"
+                            }
                         }
                     },
-                    "400": {
-                        "description": "Bad Request"
+                    "401": {
+                        "description": "Unauthorized (missing or invalid refresh token)",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.AppError"
+                        }
                     },
                     "500": {
-                        "description": "Internal Server Error"
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.AppError"
+                        }
                     }
                 }
-            }
-        },
-        "/auth/logout": {
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Log out the current user.",
-                "consumes": [
+            },
+            "delete": {
+                "description": "Logs out the user by clearing the ` + "`" + `alog_tkn` + "`" + ` and ` + "`" + `refresh_tkn` + "`" + ` cookies.",
+                "produces": [
                     "application/json"
                 ],
                 "tags": [
@@ -113,167 +116,17 @@ const docTemplate = `{
                 ],
                 "summary": "Logout",
                 "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
-        "/auth/me": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Get the currently authenticated user's information.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "GetCurrentUser",
-                "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Successfully logged out",
                         "schema": {
-                            "$ref": "#/definitions/dto.UserDTO"
+                            "type": "string"
+                        },
+                        "headers": {
+                            "Set-Cookie": {
+                                "type": "string",
+                                "description": "Expired alog_tkn and refresh_tkn cookies"
+                            }
                         }
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
-        "/auth/signup/callback": {
-            "get": {
-                "description": "Handle the OAuth2 callback after a successful signup.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "HandleSignupCallback",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Authorization code",
-                        "name": "code",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "State",
-                        "name": "state",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.AuthResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
-        "/auth/signup/init": {
-            "post": {
-                "description": "Initiate the OAuth2 signup flow.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "InitiateSignup",
-                "parameters": [
-                    {
-                        "description": "Signup initiation request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.SignupInitRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.SignupInitResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
-        "/auth/token/refresh": {
-            "post": {
-                "description": "Refresh the access token using a refresh token.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "RefreshToken",
-                "parameters": [
-                    {
-                        "description": "Token refresh request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.TokenRefreshRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.TokenResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
                     }
                 }
             }
@@ -1150,9 +1003,6 @@ const docTemplate = `{
                     }
                 ],
                 "description": "Get a single user by their ID.",
-                "produces": [
-                    "application/json"
-                ],
                 "tags": [
                     "User"
                 ],
@@ -1195,20 +1045,6 @@ const docTemplate = `{
                 },
                 "timestamp": {
                     "type": "string"
-                }
-            }
-        },
-        "dto.AuthResponse": {
-            "type": "object",
-            "properties": {
-                "expiresAt": {
-                    "type": "string"
-                },
-                "sessionToken": {
-                    "type": "string"
-                },
-                "user": {
-                    "$ref": "#/definitions/dto.UserDTO"
                 }
             }
         },
@@ -1362,28 +1198,6 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.LoginInitRequest": {
-            "type": "object",
-            "required": [
-                "redirectUri"
-            ],
-            "properties": {
-                "redirectUri": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.LoginInitResponse": {
-            "type": "object",
-            "properties": {
-                "authorizationUrl": {
-                    "type": "string"
-                },
-                "state": {
-                    "type": "string"
-                }
-            }
-        },
         "dto.PaginatedResult-dto_CommentResponse": {
             "type": "object",
             "properties": {
@@ -1444,59 +1258,6 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.SignupInitRequest": {
-            "type": "object",
-            "required": [
-                "redirectUri"
-            ],
-            "properties": {
-                "redirectUri": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.SignupInitResponse": {
-            "type": "object",
-            "properties": {
-                "authorizationUrl": {
-                    "type": "string"
-                },
-                "state": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.TokenRefreshRequest": {
-            "type": "object",
-            "required": [
-                "refresh_token"
-            ],
-            "properties": {
-                "refresh_token": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.TokenResponse": {
-            "type": "object",
-            "properties": {
-                "access_token": {
-                    "type": "string"
-                },
-                "expires_in": {
-                    "type": "integer"
-                },
-                "refresh_token": {
-                    "type": "string"
-                },
-                "scope": {
-                    "type": "string"
-                },
-                "token_type": {
-                    "type": "string"
-                }
-            }
-        },
         "dto.TopicCreateRequest": {
             "type": "object",
             "properties": {
@@ -1524,32 +1285,6 @@ const docTemplate = `{
             "required": [
                 "name"
             ],
-            "properties": {
-                "connections": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "generation": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "partOf": {
-                    "type": "string"
-                },
-                "profileImage": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.UserDTO": {
-            "type": "object",
             "properties": {
                 "connections": {
                     "type": "array",
@@ -1622,6 +1357,18 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "profileImage": {
+                    "type": "string"
+                }
+            }
+        },
+        "pkg.AppError": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "details": {},
+                "message": {
                     "type": "string"
                 }
             }

@@ -17,20 +17,27 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type TokenService struct {
-	key    []byte
-	parser *jwt.Parser
-	repo   *repository.TokenRepository
+type TokenService interface {
+	Sign(user *entity.User) (*string, error)
+	Verify(tokenStr string) (*dto.JwtClaims, error)
+	RefreshToken(ctx context.Context, refreshToken string) (*dto.RefreshTokenResponse, error)
+	GenerateRefreshToken(ctx context.Context, u *entity.User) (*entity.RefreshToken, error)
 }
 
-func NewTokenService(repo *repository.TokenRepository) *TokenService {
+type TokenServiceImpl struct {
+	key    []byte
+	parser *jwt.Parser
+	repo   repository.TokenRepository
+}
+
+func NewTokenService(repo repository.TokenRepository) TokenService {
 	key, err := base64.StdEncoding.DecodeString(os.Getenv("JWT_TOKEN"))
 
 	if err != nil {
 		panic(err)
 	}
 
-	return &TokenService{
+	return &TokenServiceImpl{
 		key: key,
 		parser: jwt.NewParser(jwt.WithTimeFunc(func() time.Time {
 			return time.Now().UTC()
@@ -39,7 +46,7 @@ func NewTokenService(repo *repository.TokenRepository) *TokenService {
 	}
 }
 
-func (s *TokenService) Sign(user *entity.User) (*string, error) {
+func (s *TokenServiceImpl) Sign(user *entity.User) (*string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS384, dto.JwtClaims{
 		Name:       user.Name,
 		Generation: user.Generation,
@@ -60,7 +67,7 @@ func (s *TokenService) Sign(user *entity.User) (*string, error) {
 	return &signed, nil
 }
 
-func (s *TokenService) Verify(tokenStr string) (*dto.JwtClaims, error) {
+func (s *TokenServiceImpl) Verify(tokenStr string) (*dto.JwtClaims, error) {
 	token, err := s.parser.ParseWithClaims(tokenStr, &dto.JwtClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -79,7 +86,7 @@ func (s *TokenService) Verify(tokenStr string) (*dto.JwtClaims, error) {
 	return token.Claims.(*dto.JwtClaims), nil
 }
 
-func (s *TokenService) RefreshToken(ctx context.Context, refreshToken string) (*dto.RefreshTokenResponse, error) {
+func (s *TokenServiceImpl) RefreshToken(ctx context.Context, refreshToken string) (*dto.RefreshTokenResponse, error) {
 	token, err := s.repo.FindByID(ctx, refreshToken)
 
 	if err != nil {
@@ -115,7 +122,7 @@ func (s *TokenService) RefreshToken(ctx context.Context, refreshToken string) (*
 	}, nil
 }
 
-func (s *TokenService) GenerateRefreshToken(ctx context.Context, u *entity.User) (*entity.RefreshToken, error) {
+func (s *TokenServiceImpl) GenerateRefreshToken(ctx context.Context, u *entity.User) (*entity.RefreshToken, error) {
 	b := make([]byte, 64)
 	_, err := rand.Read(b)
 

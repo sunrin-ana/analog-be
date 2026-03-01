@@ -13,11 +13,11 @@ import (
 )
 
 type AuthInterceptor struct {
-	tokenService *service.TokenService
+	tokenService service.TokenService
 	logger       *zap.Logger
 }
 
-func NewAuthInterceptor(tokenService *service.TokenService, logger *zap.Logger) *AuthInterceptor {
+func NewAuthInterceptor(tokenService service.TokenService, logger *zap.Logger) *AuthInterceptor {
 	return &AuthInterceptor{
 		tokenService: tokenService,
 		logger:       logger,

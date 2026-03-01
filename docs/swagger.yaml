@@ -11,15 +11,6 @@ definitions:
       timestamp:
         type: string
     type: object
-  dto.AuthResponse:
-    properties:
-      expiresAt:
-        type: string
-      sessionToken:
-        type: string
-      user:
-        $ref: '#/definitions/dto.UserDTO'
-    type: object
   dto.CommentCreateRequest:
     properties:
       content:
@@ -122,20 +113,6 @@ definitions:
           type: integer
         type: array
     type: object
-  dto.LoginInitRequest:
-    properties:
-      redirectUri:
-        type: string
-    required:
-    - redirectUri
-    type: object
-  dto.LoginInitResponse:
-    properties:
-      authorizationUrl:
-        type: string
-      state:
-        type: string
-    type: object
   dto.PaginatedResult-dto_CommentResponse:
     properties:
       items:
@@ -175,40 +152,6 @@ definitions:
       total:
         type: integer
     type: object
-  dto.SignupInitRequest:
-    properties:
-      redirectUri:
-        type: string
-    required:
-    - redirectUri
-    type: object
-  dto.SignupInitResponse:
-    properties:
-      authorizationUrl:
-        type: string
-      state:
-        type: string
-    type: object
-  dto.TokenRefreshRequest:
-    properties:
-      refresh_token:
-        type: string
-    required:
-    - refresh_token
-    type: object
-  dto.TokenResponse:
-    properties:
-      access_token:
-        type: string
-      expires_in:
-        type: integer
-      refresh_token:
-        type: string
-      scope:
-        type: string
-      token_type:
-        type: string
-    type: object
   dto.TopicCreateRequest:
     properties:
       name:
@@ -241,23 +184,6 @@ definitions:
         type: string
     required:
     - name
-    type: object
-  dto.UserDTO:
-    properties:
-      connections:
-        items:
-          type: string
-        type: array
-      generation:
-        type: integer
-      id:
-        type: integer
-      name:
-        type: string
-      partOf:
-        type: string
-      profileImage:
-        type: string
     type: object
   dto.UserResponse:
     properties:
@@ -293,6 +219,14 @@ definitions:
       profileImage:
         type: string
     type: object
+  pkg.AppError:
+    properties:
+      code:
+        type: string
+      details: {}
+      message:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact: {}
@@ -300,16 +234,17 @@ info:
   title: AnAlog API
   version: 1.0.0
 paths:
-  /auth/login/callback:
+  /auth/callback:
     get:
-      description: Handle the OAuth2 callback after a successful login.
+      description: Handles the OAuth2 callback, sets auth cookies, and redirects to
+        the original state.
       parameters:
       - description: Authorization code
         in: query
         name: code
         required: true
         type: string
-      - description: State
+      - description: State (original redirect URI)
         in: query
         name: state
         required: true
@@ -317,157 +252,66 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "303":
+          description: Redirecting to original state
+          headers:
+            Location:
+              description: Redirect URI
+              type: string
           schema:
-            $ref: '#/definitions/dto.AuthResponse'
+            type: string
         "400":
-          description: Bad Request
+          description: Missing code or state
+          schema:
+            $ref: '#/definitions/pkg.AppError'
         "500":
           description: Internal Server Error
-      summary: HandleLoginCallback
+          schema:
+            $ref: '#/definitions/pkg.AppError'
+      summary: Handle OAuth2 Callback
       tags:
       - Auth
-  /auth/login/init:
-    post:
-      consumes:
-      - application/json
-      description: Initiate the OAuth2 login flow.
-      parameters:
-      - description: Login initiation request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.LoginInitRequest'
+  /auth/token:
+    delete:
+      description: Logs out the user by clearing the `alog_tkn` and `refresh_tkn`
+        cookies.
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Successfully logged out
+          headers:
+            Set-Cookie:
+              description: Expired alog_tkn and refresh_tkn cookies
+              type: string
           schema:
-            $ref: '#/definitions/dto.LoginInitResponse'
-        "400":
-          description: Bad Request
-        "500":
-          description: Internal Server Error
-      summary: InitiateLogin
-      tags:
-      - Auth
-  /auth/logout:
-    post:
-      consumes:
-      - application/json
-      description: Log out the current user.
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-        "500":
-          description: Internal Server Error
-      security:
-      - ApiKeyAuth: []
+            type: string
       summary: Logout
       tags:
       - Auth
-  /auth/me:
-    get:
-      description: Get the currently authenticated user's information.
+    put:
+      description: Refreshes the access token using the refresh token stored in the
+        `refresh_tkn` cookie.
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Successfully refreshed tokens
+          headers:
+            Set-Cookie:
+              description: alog_tkn and refresh_tkn cookies
+              type: string
           schema:
-            $ref: '#/definitions/dto.UserDTO'
+            type: string
         "401":
-          description: Unauthorized
-        "500":
-          description: Internal Server Error
-      security:
-      - ApiKeyAuth: []
-      summary: GetCurrentUser
-      tags:
-      - Auth
-  /auth/signup/callback:
-    get:
-      description: Handle the OAuth2 callback after a successful signup.
-      parameters:
-      - description: Authorization code
-        in: query
-        name: code
-        required: true
-        type: string
-      - description: State
-        in: query
-        name: state
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
+          description: Unauthorized (missing or invalid refresh token)
           schema:
-            $ref: '#/definitions/dto.AuthResponse'
-        "400":
-          description: Bad Request
+            $ref: '#/definitions/pkg.AppError'
         "500":
           description: Internal Server Error
-      summary: HandleSignupCallback
-      tags:
-      - Auth
-  /auth/signup/init:
-    post:
-      consumes:
-      - application/json
-      description: Initiate the OAuth2 signup flow.
-      parameters:
-      - description: Signup initiation request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.SignupInitRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
           schema:
-            $ref: '#/definitions/dto.SignupInitResponse'
-        "400":
-          description: Bad Request
-        "500":
-          description: Internal Server Error
-      summary: InitiateSignup
-      tags:
-      - Auth
-  /auth/token/refresh:
-    post:
-      consumes:
-      - application/json
-      description: Refresh the access token using a refresh token.
-      parameters:
-      - description: Token refresh request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.TokenRefreshRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.TokenResponse'
-        "400":
-          description: Bad Request
-        "500":
-          description: Internal Server Error
-      summary: RefreshToken
+            $ref: '#/definitions/pkg.AppError'
+      summary: Refresh Access Token
       tags:
       - Auth
   /health:
@@ -987,8 +831,6 @@ paths:
         name: id
         required: true
         type: integer
-      produces:
-      - application/json
       responses:
         "200":
           description: OK

@@ -14,10 +14,10 @@ import (
 )
 
 type UserController struct {
-	userService *service.UserService
+	userService service.UserService
 }
 
-func NewUserController(userService *service.UserService) *UserController {
+func NewUserController(userService service.UserService) *UserController {
 	return &UserController{
 		userService: userService,
 	}
@@ -27,7 +27,6 @@ func NewUserController(userService *service.UserService) *UserController {
 // @Summary      GetUserByID
 // @Description  Get a single user by their ID.
 // @Tags         User
-// @Produce      JSON
 // @Param        id path int true "User ID"
 // @Success      200 {object} dto.UserResponse
 // @Failure      404 "Not Found"
