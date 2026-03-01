@@ -1,49 +1,12 @@
 package dto
 
 import (
-	"analog-be/entity"
-
 	"github.com/NARUBROWN/spine/pkg/httpx"
 )
-
-type LoginInitRequest struct {
-	RedirectUri string `json:"redirectUri" binding:"required"` // 인증 진행 이후 redirect 될 URI
-}
-
-type SignupInitRequest struct {
-	RedirectUri string `json:"redirectUri" binding:"required"`
-}
-
-type SignupInitResponse struct {
-	AuthorizationUrl string `json:"authorizationUrl"`
-	State            string `json:"state"`
-}
-
-type TokenRefreshRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
-}
-
-type OAuthCallbackRequest struct {
-	Code  string `form:"code" binding:"required"`
-	State string `form:"state" binding:"required"`
-}
 
 type AuthResponse struct {
 	Cookies     []httpx.Cookie
 	RedirectUri string
-}
-
-type UserDTO struct {
-	ID           entity.ID `json:"id"`
-	Name         string    `json:"name"`
-	ProfileImage string    `json:"profileImage"`
-	PartOf       string    `json:"partOf"`
-	Generation   uint16    `json:"generation"`
-	Connections  []string  `json:"connections"`
-}
-
-type LogoutRequest struct {
-	SessionToken string `json:"sessionToken" binding:"required"`
 }
 
 type TokenResponse struct {

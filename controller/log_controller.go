@@ -2,7 +2,6 @@ package controller
 
 import (
 	"analog-be/dto"
-	"analog-be/entity"
 	"analog-be/pkg"
 	"analog-be/service"
 	"context"
@@ -387,7 +386,7 @@ func (c *LogController) CreateComment(ctx context.Context, id path.Int, req *dto
 		}
 	}
 
-	v, ok := spineCtx.Get(string(pkg.UserIDKey))
+	authorID, ok := pkg.GetUserID(ctx)
 	if !ok {
 		return httpx.Response[dto.CommentResponse]{
 			Options: httpx.ResponseOptions{
@@ -395,8 +394,6 @@ func (c *LogController) CreateComment(ctx context.Context, id path.Int, req *dto
 			},
 		}
 	}
-
-	authorID := v.(entity.ID)
 
 	comment, err := c.commentService.Create(ctx, req, &id.Value, &authorID)
 	if err != nil {

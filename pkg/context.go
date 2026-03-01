@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"analog-be/dto"
 	"analog-be/entity"
 	"context"
 )
@@ -8,16 +9,16 @@ import (
 type contextKey string
 
 const (
-	UserIDKey       contextKey = "userID"
-	SessionTokenKey contextKey = "sessionToken"
+	UserClaims contextKey = "userClaims"
+	UserID     contextKey = "userID"
 )
 
-func GetUserID(ctx context.Context) (entity.ID, bool) {
-	userID, ok := ctx.Value(UserIDKey).(entity.ID)
-	return userID, ok
+func GetUserClaims(ctx context.Context) (dto.JwtClaims, bool) {
+	userClaims, ok := ctx.Value(UserClaims).(dto.JwtClaims)
+	return userClaims, ok
 }
 
-func GetSessionToken(ctx context.Context) (string, bool) {
-	token, ok := ctx.Value(SessionTokenKey).(string)
-	return token, ok
+func GetUserID(ctx context.Context) (entity.ID, bool) {
+	userID, ok := ctx.Value(UserClaims).(entity.ID)
+	return userID, ok
 }

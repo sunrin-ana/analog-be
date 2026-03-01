@@ -110,6 +110,7 @@ func main() {
 		interceptor.NewRateLimitInterceptor(),
 		interceptor.NewLoggingInterceptor(),
 		interceptor.NewErrorInterceptor(),
+		interceptor.NewCookieInterceptor(),
 	)
 
 	routes.RegisterHealthRoutes(app)

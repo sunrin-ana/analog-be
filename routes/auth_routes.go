@@ -2,14 +2,15 @@ package routes
 
 import (
 	"analog-be/controller"
+	"analog-be/interceptor"
 
 	"github.com/NARUBROWN/spine"
+	"github.com/NARUBROWN/spine/pkg/route"
 )
 
 func RegisterAuthRoutes(app spine.App) {
 	app.Route("GET", "/auth/callback", (*controller.AuthController).HandleAuthCallback)
 
-	app.Route("POST", "/auth/refresh", (*controller.AuthController).RefreshToken)
-	app.Route("POST", "/auth/logout", (*controller.AuthController).Logout)
-	app.Route("GET", "/auth/me", (*controller.AuthController).GetCurrentUser)
+	app.Route("PUT", "/auth/token", (*controller.AuthController).RefreshToken)
+	app.Route("DELETE", "/auth/token", (*controller.AuthController).Logout, route.WithInterceptors(&interceptor.AuthInterceptor{}))
 }

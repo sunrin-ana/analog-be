@@ -70,10 +70,19 @@ func (c *AuthController) HandleAuthCallback(ctx context.Context, q query.Values)
 	}
 }
 
-func (c *AuthController) RefreshToken(ctx context.Context, q query.Values) {
+// RefreshToken refreshes the access token using a valid refresh token.
+// @Summary      RefreshToken
+// @Description  Refreshes the access token using a valid refresh token.
+// @Tags         Auth
+// @Success      200 "OK"
+// @Failure      401 "Not Authorized"
+// @Failure      500 "Internal Server Error"
+// @Router       /auth/callback [get]
+func (c *AuthController) RefreshToken(ctx context.Context, headers http.Header) {
+	headers.Get("")
 	// TODO: impl
 }
 
-func (c *AuthController) Logout(ctx context.Context, q query.Values) {
+func (c *AuthController) Logout(ctx context.Context) {
 	// TODO: impl
 }

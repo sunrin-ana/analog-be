@@ -50,7 +50,7 @@ func (s *OAuthService) HandleCallback(ctx context.Context, code, state string) (
 		return nil, err
 	}
 
-	token, err := s.tokenService.sign(user)
+	token, err := s.tokenService.Sign(user)
 	if err != nil {
 		return nil, err
 	}
@@ -88,42 +88,6 @@ func (s *OAuthService) HandleCallback(ctx context.Context, code, state string) (
 		Cookies:     []httpx.Cookie{tknCookie, refreshCookie},
 		RedirectUri: redirectUri,
 	}, nil
-}
-
-func (s *OAuthService) RefreshAccessToken(refreshToken string) (*dto.TokenResponse, error) {
-	baseURL := getAnAccountBaseURL()
-	clientID := getAnAccountClientID()
-	clientSecret := getAnAccountClientSecret()
-
-	data := url.Values{}
-	data.Set("grant_type", "refresh_token")
-	data.Set("refresh_token", refreshToken)
-	data.Set("client_id", clientID)
-	data.Set("client_secret", clientSecret)
-
-	req, err := http.NewRequest("POST", baseURL+"/oauth2/token", strings.NewReader(data.Encode()))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create refresh request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("refresh request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("refresh token failed: %s", string(body))
-	}
-
-	var tokenResp dto.TokenResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
-		return nil, fmt.Errorf("failed to decode token response: %w", err)
-	}
-
-	return &tokenResp, nil
 }
 
 func (s *OAuthService) exchangeCodeForToken(code, redirectUri string) (*dto.TokenResponse, error) {

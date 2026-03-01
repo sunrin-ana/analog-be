@@ -39,7 +39,7 @@ func NewTokenService(repo *repository.TokenRepository) *TokenService {
 	}
 }
 
-func (s *TokenService) sign(user *entity.User) (*string, error) {
+func (s *TokenService) Sign(user *entity.User) (*string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS384, dto.JwtClaims{
 		Name:       user.Name,
 		Generation: user.Generation,
@@ -60,7 +60,7 @@ func (s *TokenService) sign(user *entity.User) (*string, error) {
 	return &signed, nil
 }
 
-func (s *TokenService) verify(tokenStr string) (*dto.JwtClaims, error) {
+func (s *TokenService) Verify(tokenStr string) (*dto.JwtClaims, error) {
 	token, err := s.parser.ParseWithClaims(tokenStr, &dto.JwtClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])

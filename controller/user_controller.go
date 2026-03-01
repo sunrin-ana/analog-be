@@ -2,16 +2,15 @@ package controller
 
 import (
 	"analog-be/dto"
-	"analog-be/entity"
 	"analog-be/pkg"
 	"analog-be/service"
 	"context"
+	"net/http"
+
 	"github.com/NARUBROWN/spine/pkg/httperr"
 	"github.com/NARUBROWN/spine/pkg/httpx"
 	"github.com/NARUBROWN/spine/pkg/path"
 	"github.com/NARUBROWN/spine/pkg/query"
-	"github.com/NARUBROWN/spine/pkg/spine"
-	"net/http"
 )
 
 type UserController struct {
@@ -28,7 +27,7 @@ func NewUserController(userService *service.UserService) *UserController {
 // @Summary      GetUserByID
 // @Description  Get a single user by their ID.
 // @Tags         User
-// @Produce      json
+// @Produce      JSON
 // @Param        id path int true "User ID"
 // @Success      200 {object} dto.UserResponse
 // @Failure      404 "Not Found"
@@ -101,17 +100,15 @@ func (c *UserController) Create(ctx context.Context, req *dto.UserCreateRequest)
 // @Failure      500 "Internal Server Error"
 // @Security     ApiKeyAuth
 // @Router       /users [put]
-func (c *UserController) Update(ctx context.Context, req *dto.UserUpdateRequest, spineCtx spine.Ctx) httpx.Response[dto.UserResponse] {
-	v, ok := spineCtx.Get(string(pkg.UserIDKey))
+func (c *UserController) Update(ctx context.Context, req *dto.UserUpdateRequest) httpx.Response[dto.UserResponse] {
+	id, ok := pkg.GetUserID(ctx)
 	if !ok {
 		return httpx.Response[dto.UserResponse]{
 			Options: httpx.ResponseOptions{
-				Status: http.StatusUnauthorized,
+				Status: http.StatusUnauthorized, // authentication required
 			},
 		}
 	}
-
-	id := v.(entity.ID)
 
 	user, err := c.userService.Update(ctx, &id, req)
 	if err != nil {
@@ -137,18 +134,11 @@ func (c *UserController) Update(ctx context.Context, req *dto.UserUpdateRequest,
 // @Failure      500 "Internal Server Error"
 // @Security     ApiKeyAuth
 // @Router       /users [delete]
-func (c *UserController) Delete(ctx context.Context, spineCtx spine.Ctx) error {
-
-	v, ok := spineCtx.Get(string(pkg.UserIDKey))
+func (c *UserController) Delete(ctx context.Context) error {
+	id, ok := pkg.GetUserID(ctx)
 	if !ok {
-		return &httperr.HTTPError{
-			Status:  401,
-			Message: "Authentication required",
-			Cause:   nil,
-		}
+		return httperr.Unauthorized("Authentication required")
 	}
-
-	id := v.(entity.ID)
 
 	err := c.userService.Delete(ctx, &id)
 	if err != nil {
@@ -218,8 +208,8 @@ func (c *UserController) Search(ctx context.Context, q query.Values, page query.
 // @Failure      500 "Internal Server Error"
 // @Security     ApiKeyAuth
 // @Router       /users/me [get]
-func (c *UserController) GetMe(ctx context.Context, spineCtx spine.Ctx) httpx.Response[dto.UserResponse] {
-	v, ok := spineCtx.Get(string(pkg.UserIDKey))
+func (c *UserController) GetMe(ctx context.Context) httpx.Response[dto.UserResponse] {
+	v, ok := pkg.GetUserID(ctx)
 	if !ok {
 		return httpx.Response[dto.UserResponse]{
 			Options: httpx.ResponseOptions{
@@ -228,9 +218,7 @@ func (c *UserController) GetMe(ctx context.Context, spineCtx spine.Ctx) httpx.Re
 		}
 	}
 
-	id := v.(entity.ID)
-
-	user, err := c.userService.Get(ctx, &id)
+	user, err := c.userService.Get(ctx, &v)
 	if err != nil {
 		return httpx.Response[dto.UserResponse]{
 			Options: httpx.ResponseOptions{
