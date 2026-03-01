@@ -22,7 +22,7 @@ func (r *TokenRepository) FindByID(ctx context.Context, refreshTokenID string) (
 
 	err := r.db.NewSelect().
 		Model(refToken).
-		Where("id = ?", refreshTokenID).
+		Where("token = ?", refreshTokenID).
 		Scan(ctx)
 	if err != nil {
 		return nil, err
@@ -34,7 +34,6 @@ func (r *TokenRepository) FindByID(ctx context.Context, refreshTokenID string) (
 func (r *TokenRepository) Create(ctx context.Context, token *entity.RefreshToken) error {
 	_, err := r.db.NewInsert().
 		Model((*entity.RefreshToken)(nil)).
-		Returning("id").
 		Exec(ctx, token)
 	if err != nil {
 		return err
@@ -42,10 +41,10 @@ func (r *TokenRepository) Create(ctx context.Context, token *entity.RefreshToken
 	return nil
 }
 
-func (r *TokenRepository) Delete(ctx context.Context, id *entity.ID) error {
+func (r *TokenRepository) Delete(ctx context.Context, refreshTokenID string) error {
 	_, err := r.db.NewDelete().
 		Model((*entity.RefreshToken)(nil)).
-		Where("id = ?", id).
+		Where("token = ?", refreshTokenID).
 		Exec(ctx)
 	if err != nil {
 		return err

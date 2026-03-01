@@ -79,7 +79,43 @@ func (s *TokenService) Verify(tokenStr string) (*dto.JwtClaims, error) {
 	return token.Claims.(*dto.JwtClaims), nil
 }
 
-func (s *TokenService) generateRefreshToken(ctx context.Context, u *entity.User) (*entity.RefreshToken, error) {
+func (s *TokenService) RefreshToken(ctx context.Context, refreshToken string) (*dto.RefreshTokenResponse, error) {
+	token, err := s.repo.FindByID(ctx, refreshToken)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if token.ExpiresAt.Before(time.Now()) {
+		return nil, fmt.Errorf("refresh token expired")
+	}
+
+	user := token.User
+	if user == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	_ = s.repo.Delete(ctx, token.Token)
+
+	newToken, err := s.Sign(user)
+
+	if err != nil {
+		return nil, err
+	}
+
+	newRefreshToken, err := s.GenerateRefreshToken(ctx, user)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.RefreshTokenResponse{
+		Token:        newToken,
+		RefreshToken: newRefreshToken,
+	}, nil
+}
+
+func (s *TokenService) GenerateRefreshToken(ctx context.Context, u *entity.User) (*entity.RefreshToken, error) {
 	b := make([]byte, 64)
 	_, err := rand.Read(b)
 

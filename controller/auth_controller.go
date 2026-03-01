@@ -1,11 +1,14 @@
 package controller
 
 import (
+	"analog-be/pkg"
 	"analog-be/service"
 	"context"
 	"net/http"
 
 	"github.com/NARUBROWN/spine/pkg/httpx"
+	"github.com/NARUBROWN/spine/pkg/spine"
+	"github.com/labstack/gommon/log"
 
 	"github.com/NARUBROWN/spine/pkg/query"
 )
@@ -54,6 +57,7 @@ func (c *AuthController) HandleAuthCallback(ctx context.Context, q query.Values)
 
 	result, err := c.oauthService.HandleCallback(ctx, code, state)
 	if err != nil {
+		log.Error(err)
 		return httpx.Response[string]{
 			Options: httpx.ResponseOptions{
 				Status: http.StatusInternalServerError, // internal server error
@@ -78,11 +82,63 @@ func (c *AuthController) HandleAuthCallback(ctx context.Context, q query.Values)
 // @Failure      401 "Not Authorized"
 // @Failure      500 "Internal Server Error"
 // @Router       /auth/callback [get]
-func (c *AuthController) RefreshToken(ctx context.Context, headers http.Header) {
-	headers.Get("")
-	// TODO: impl
+func (c *AuthController) RefreshToken(ctx context.Context, spineCtx spine.Ctx) (*httpx.Response[string], error) {
+	v, ok := spineCtx.Get("Cookie")
+
+	if !ok {
+		return nil, pkg.NewUnauthorizedError("Missing cookies")
+	}
+
+	cookies, ok := v.(map[string]*httpx.Cookie)
+
+	if !ok || cookies == nil || cookies["alog_tkn"] == nil {
+		return nil, pkg.NewUnauthorizedError("Missing cookies")
+	}
+
+	refreshToken := cookies["refresh_tkn"]
+
+	result, err := c.oauthService.RefreshToken(ctx, refreshToken.Value)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &httpx.Response[string]{
+		Options: httpx.ResponseOptions{
+			Status:  http.StatusOK,
+			Cookies: result[:],
+		},
+	}, nil
 }
 
-func (c *AuthController) Logout(ctx context.Context) {
-	// TODO: impl
+func (c *AuthController) Logout(ctx context.Context, spineCtx spine.Ctx) httpx.Response[string] {
+	v, ok := spineCtx.Get("Cookie")
+
+	if ok {
+		cookies, ok := v.(map[string]*httpx.Cookie)
+
+		if ok && cookies == nil && cookies["refresh_tkn"] != nil {
+			_ = c.oauthService.Logout(ctx, cookies["refresh_tkn"].Value)
+		}
+	}
+
+	return httpx.Response[string]{
+		Options: httpx.ResponseOptions{
+			Status: http.StatusOK,
+			Cookies: []httpx.Cookie{
+				{
+					Name:   "alog_tkn",
+					Value:  "",
+					Path:   "/",
+					MaxAge: 0,
+				},
+				{
+					Name:   "refresh_tkn",
+					Value:  "",
+					Path:   "/",
+					MaxAge: 0,
+				},
+			},
+		},
+	}
 }

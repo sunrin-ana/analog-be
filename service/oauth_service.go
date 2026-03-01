@@ -35,7 +35,7 @@ func NewAnAccountOAuthService(
 }
 
 func (s *OAuthService) HandleCallback(ctx context.Context, code, state string) (*dto.AuthResponse, error) {
-	tokenResp, err := s.exchangeCodeForToken(code, os.Getenv("BASE_URL"))
+	tokenResp, err := s.exchangeCodeForToken(code, os.Getenv("BASE_URL")+"/api/auth/callback")
 	if err != nil {
 		return nil, fmt.Errorf("failed to exchange code: %w", err)
 	}
@@ -55,7 +55,7 @@ func (s *OAuthService) HandleCallback(ctx context.Context, code, state string) (
 		return nil, err
 	}
 
-	refreshToken, err := s.tokenService.generateRefreshToken(ctx, user)
+	refreshToken, err := s.tokenService.GenerateRefreshToken(ctx, user)
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +88,48 @@ func (s *OAuthService) HandleCallback(ctx context.Context, code, state string) (
 		Cookies:     []httpx.Cookie{tknCookie, refreshCookie},
 		RedirectUri: redirectUri,
 	}, nil
+}
+
+func (s *OAuthService) RefreshToken(ctx context.Context, refreshToken string) (*[2]httpx.Cookie, error) {
+	result, err := s.tokenService.RefreshToken(ctx, refreshToken)
+
+	if err != nil {
+		return nil, err
+	}
+
+	cookies := s.bakeAuthCookies(result.Token, result.RefreshToken)
+
+	return &cookies, nil
+}
+
+func (s *OAuthService) Logout(ctx context.Context, refreshToken string) error {
+	return nil
+}
+
+func (s *OAuthService) bakeAuthCookies(token *string, refreshToken *entity.RefreshToken) [2]httpx.Cookie {
+	tknCookie := httpx.Cookie{
+		Name:     "alog_tkn",
+		Value:    *token,
+		Path:     "/",
+		Domain:   os.Getenv("BASE_URL"),
+		MaxAge:   60*60*4 - 60, // Token의 Max Age는 4시간
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: "Lax",
+	}
+
+	refreshCookie := httpx.Cookie{
+		Name:     "refresh_tkn",
+		Value:    refreshToken.Token,
+		Path:     "/",
+		Domain:   os.Getenv("BASE_URL"),
+		Expires:  &refreshToken.ExpiresAt, // Token의 Max Age는 20일
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: "Lax",
+	}
+
+	return [2]httpx.Cookie{tknCookie, refreshCookie}
 }
 
 func (s *OAuthService) exchangeCodeForToken(code, redirectUri string) (*dto.TokenResponse, error) {
