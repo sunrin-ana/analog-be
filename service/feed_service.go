@@ -105,6 +105,10 @@ func (f *FeedServiceImpl) GenerateRSSFeed(ctx context.Context) (string, error) {
 		return "", err
 	}
 
+	if len(list) == 0 {
+		return "", nil
+	}
+
 	var sb strings.Builder
 	sb.WriteString(RSS_FEED_PREFIX)
 	sb.WriteString(fmt.Sprintf("<lastBuildDate>%s</lastBuildDate>", list[0].CreatedAt.Format(time.RFC1123Z)))
